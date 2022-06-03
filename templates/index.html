@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- CSS only -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+<head>
+    <meta charset="UTF-8">
+    <title>BookVault</title>
+</head>
+<body>
+<header class="py-4 mb-3 border-bottom">
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('homepage') }}">BookVault</a>
+            <div class="collapse navbar-collapse">
+                <form method="POST" class="d-flex w-100" action="{{ url_for('search_books') }}">
+                    <input class="form-control me-3" placeholder="Search" aria-label="Search" name="query">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+                <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Add</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+<div class="container-fluid pb-3">
+    <div class="d-grid gap-3" style="grid-template-columns: 2fr 10fr;">
+        <div class="bg-light border rounded-2">
+            {% for tag in tags %}
+            {{ tag.name }}<br>
+            {% endfor %}
+        </div>
+        <div class="bg-light border rounded-2">
+            {% for book in books %}
+            {{ book.title }}<br>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+</body>
+</html>

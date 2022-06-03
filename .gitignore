@@ -1,0 +1,42 @@
+# Mac OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+
+# Sphinx
+docs/build/
+
+# Project folders
+.idea/
+
+# certificates
+*.pem
+
+# Secret key yaml
+app/secret_keys.yaml
+
+# Local config
+app/config_local.yml
+
+# Local development rubbish
+.dev_server_tmp/
+
+# Virtual Environment
+.venv/
+*.db
