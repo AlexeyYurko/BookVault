@@ -1,15 +1,12 @@
 from flask import Flask
 
-from handlers import homepage, search_books
-from db.database import create_db
-from db.seed import seed_db
+from database import datab
+from handlers import books, home
 
 app = Flask(__name__)
-
-app.add_url_rule("/create_db", "create_db", create_db, methods=["GET"])
-app.add_url_rule("/seed_db", "seed_db", seed_db, methods=["GET"])
-app.add_url_rule("/search", "search_books", search_books, methods=["POST"])
-app.add_url_rule("/", "homepage", homepage, methods=["GET"])
+app.register_blueprint(books)
+app.register_blueprint(datab)
+app.register_blueprint(home)
 
 
 if __name__ == '__main__':

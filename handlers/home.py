@@ -1,10 +1,13 @@
-from flask import render_template
+from flask import Blueprint, render_template
 from sqlalchemy.orm import Session
 
 from db import engine
 from models import Book, Tag
 
+home = Blueprint('homepage', __name__, template_folder='templates')
 
+
+@home.route('/', methods=['GET'])
 def homepage():
     with Session(bind=engine) as session:
         books = session.query(Book).all()
