@@ -1,19 +1,19 @@
 from flask import Blueprint
 from sqlalchemy.orm import Session
 
-from base import Base, engine
+from db.base import Base, engine
 from models import Book, Tag
 
-datab = Blueprint('db', __name__, template_folder='templates')
+database_bp = Blueprint('db', __name__, template_folder='templates')
 
 
-@datab.route('/create_db', methods=['GET'])
+@database_bp.route('/create_db', methods=['GET'])
 def create_db():
     Base.metadata.create_all(engine)
     return {"message": "ok"}
 
 
-@datab.route('/seed_db', methods=['GET'])
+@database_bp.route('/seed_db', methods=['GET'])
 def seed_db():
     with Session(bind=engine) as session:
         first_tag = Tag(name="Fantasy")

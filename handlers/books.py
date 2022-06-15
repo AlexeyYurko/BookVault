@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session, joinedload
 from db.database import engine
 from models import Book
 
-books = Blueprint('books', __name__, template_folder='templates')
+books_bp = Blueprint('books', __name__, template_folder='templates')
 
 
-@books.route('/search', methods=['POST'])
+@books_bp.route('/search', methods=['POST'])
 def search_books():
     query = request.form['query']
     with Session(bind=engine) as session:
