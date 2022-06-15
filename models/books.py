@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Table, ForeignKey
 from sqlalchemy.orm import relationship
 
-from base import Base
+from db.base import Base
 
 books_tags = Table('books_tags', Base.metadata,
                    Column('book_id', ForeignKey('books.id'), primary_key=True),
