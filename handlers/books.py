@@ -16,3 +16,9 @@ def search_books():
     for book in books:
         tags.extend(iter(book.tags))
     return render_template('index.html', books=books, tags=set(tags))
+
+
+@books_bp.route('/add_books', methods=['POST', 'GET'])
+def add_books():
+    if request.method == 'GET':
+        return render_template('add_books.html')
