@@ -1,8 +1,11 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, redirect, render_template, request, url_for
 from sqlalchemy.orm import Session, joinedload
 
 from db.database import engine
+from importers import DjvuImporter, EpubImporter, PdfImporter
 from models import Book
+
+ALLOWED_TYPES = {'application/pdf': PdfImporter, 'application/epub+zip': EpubImporter, 'application/djvu': DjvuImporter}
 
 books_bp = Blueprint('books', __name__, template_folder='templates')
 
@@ -22,3 +25,11 @@ def search_books():
 def add_books():
     if request.method == 'GET':
         return render_template('add_books.html')
+    file = request.files['file']
+    file_type = file.content_type
+    if file_type not in ALLOWED_TYPES:
+        return render_template('add_books.html', error="Invalid file type")
+    tags = request.form['tags'].split(',')
+    book_importer = ALLOWED_TYPES[file_type]()
+    book_importer.process(file, tags)
+    return redirect(url_for('homepage.homepage'))
