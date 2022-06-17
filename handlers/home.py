@@ -7,7 +7,7 @@ from models import Book, Tag
 home_bp = Blueprint('homepage', __name__, template_folder='templates')
 
 
-@home_bp.route('/', methods=['GET'])
+@home_bp.route('/home/', methods=['GET'])
 def homepage():
     with Session(bind=engine) as session:
         books = session.query(Book).all()
