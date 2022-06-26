@@ -29,7 +29,7 @@ def add_books():
     file_type = file.content_type
     if file_type not in ALLOWED_TYPES:
         return render_template('add_books.html', error="Invalid file type")
-    tags = request.form['tags'].split(',')
-    book_importer = ALLOWED_TYPES[file_type]()
-    book_importer.process(file, tags)
+    tags = [tag.strip() for tag in request.form['tags'].split(',')]
+    book_importer = ALLOWED_TYPES[file_type](file, tags)
+    book_importer.process()
     return redirect(url_for('homepage.homepage'))
