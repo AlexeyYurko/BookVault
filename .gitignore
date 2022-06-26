@@ -40,3 +40,5 @@ app/config_local.yml
 # Virtual Environment
 .venv/
 *.db
+
+static/cover_images/*.*

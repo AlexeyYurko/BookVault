@@ -21,6 +21,7 @@ class Book(Base):
     amazon_url = Column(String, nullable=True)
     goodreads_url = Column(String, nullable=True)
     checksum = Column(String, nullable=True)
+    format = Column(String, nullable=False)
     tags = relationship("Tag", secondary="books_tags", back_populates='books')
 
 

@@ -1,17 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container-fluid pb-3">
-    <div class="d-grid gap-3" style="grid-template-columns: 2fr 10fr;">
-        <div class="bg-light border rounded-2">
-            {% for tag in tags %}
-            {{ tag.name }}<br>
-            {% endfor %}
-        </div>
-        <div class="bg-light border rounded-2">
-            {% for book in books %}
-            {{ book.title }}<br>
-            {% endfor %}
+    <div class="container-fluid pb-3">
+        <div class="d-grid gap-3" style="grid-template-columns: 2fr 10fr;">
+            <div class="bg-light border rounded-2">
+                {% for tag in tags %}
+                    {{ tag.name }}<br>
+                {% endfor %}
+            </div>
+            <div class="bg-light border rounded-2">
+                {% for book in books %}
+                    {% if book.cover %}
+                        <img src="{{ url_for('static', filename='cover_images/' + book.cover) }}" width="50" alt="">
+                    {% endif %}
+                    {% if book.author %}
+                        {{ book.author }} -
+                    {% endif %}
+                    {{ book.title }}<br>
+                {% endfor %}
+            </div>
         </div>
     </div>
-</div>
 {% endblock %}
