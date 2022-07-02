@@ -8,13 +8,17 @@ books_tags = Table('books_tags', Base.metadata,
                    Column('tag_id', ForeignKey('tags.id'), primary_key=True)
                    )
 
+books_authors = Table('books_authors', Base.metadata,
+                      Column('book_id', ForeignKey('books.id'), primary_key=True),
+                      Column('author_id', ForeignKey('authors.id'), primary_key=True)
+                      )
+
 
 class Book(Base):
     __tablename__ = 'books'
 
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
-    author = Column(String, nullable=True)
     isbn = Column(String, nullable=True)
     description = Column(String, nullable=True)
     cover = Column(String, nullable=True)
@@ -23,6 +27,7 @@ class Book(Base):
     checksum = Column(String, nullable=True)
     format = Column(String, nullable=False)
     tags = relationship("Tag", secondary="books_tags", back_populates='books')
+    authors = relationship("Author", secondary="books_authors", back_populates='books', lazy='joined')
 
 
 class Tag(Base):
