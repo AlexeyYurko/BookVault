@@ -12,8 +12,8 @@
                     {% if book.cover %}
                         <img src="{{ url_for('static', filename='cover_images/' + book.cover) }}" width="50" alt="">
                     {% endif %}
-                    {% if book.author %}
-                        {{ book.author }} -
+                    {% if book.authors %}
+                        {{ book.authors|join(', ', attribute='name') }} -
                     {% endif %}
                     {{ book.title }}<br>
                 {% endfor %}

@@ -11,7 +11,7 @@ class PdfImporter(BookImporter):
     FORMAT = 'pdf'
 
     def extract_cover(self):
-        filename = self.cover_filename
+        filename = self._cover_filename
         pdf = pdfium.PdfDocument(self.file)
         page = pdf.get_page(0)
         cover = page.render_topil(scale=2, optimise_mode=pdfium.OptimiseMode.NONE)
