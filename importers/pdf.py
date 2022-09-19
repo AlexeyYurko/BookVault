@@ -22,7 +22,7 @@ class PdfImporter(BookImporter):
 
     def get_metadata(self):
         pdf = PdfFileReader(self.file)
-        pdf_info = pdf.getDocumentInfo()
+        pdf_info = pdf.metadata
         author = pdf_info.get('/Author', '')
         title = pdf_info.get('/Title', os.path.splitext(self.file.filename)[0])
         return author, title

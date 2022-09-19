@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from db import engine
 from models import Book, Tag
 from models.author import Author
+from models.publishers import Publisher
 
 
 class BookImporter:
@@ -62,6 +63,13 @@ class BookImporter:
                 db_authors.append(author)
         return db_authors
 
+    def _process_publisher(self, publisher_name="unset"):
+        with Session(bind=engine) as session:
+            publisher = session.query(Publisher).filter(Publisher.name == publisher_name).first()
+            if not publisher:
+                publisher = Publisher(name=publisher_name)
+        return publisher
+
     def process(self):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
@@ -79,7 +87,8 @@ class BookImporter:
                 checksum=checksum,
                 format=self.FORMAT,
                 cover=self.extract_cover(),
-                tags=self._process_tags()
+                tags=self._process_tags(),
+                publisher=self._process_publisher()
             )
             session.add(book)
             session.commit()
