@@ -28,6 +28,7 @@ class Book(Base):
     format = Column(String, nullable=False)
     tags = relationship("Tag", secondary="books_tags", back_populates='books')
     authors = relationship("Author", secondary="books_authors", back_populates='books', lazy='joined')
+    publisher_id = Column(Integer, ForeignKey('publishers.id'), nullable=False)
 
 
 class Tag(Base):
