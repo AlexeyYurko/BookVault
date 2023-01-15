@@ -8,7 +8,7 @@
         {% if error %}
             <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
-        <form method="POST" enctype="multipart/form-data" action="{{ url_for('books.add_books') }}">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('add_books') }}">
             <div class="form-group mb-3">
                 <label for="file">Select book</label>
                 <input id="file" name="file" required="" type="file" class="form-control">

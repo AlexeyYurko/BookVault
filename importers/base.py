@@ -5,10 +5,9 @@ from abc import abstractmethod
 
 from sqlalchemy.orm import Session
 
-from db import engine
+from db.base import engine
 from models import Book, Tag
 from models.author import Author
-from models.publishers import Publisher
 
 
 class BookImporter:
@@ -33,7 +32,7 @@ class BookImporter:
 
     def _calculate_checksum(self):
         file_hash = hashlib.blake2b()
-        while chunk := self.file.read(8192):
+        while chunk := self.file.file.read(8192):
             file_hash.update(chunk)
         return file_hash.hexdigest()
 

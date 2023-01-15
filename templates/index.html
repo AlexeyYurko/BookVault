@@ -10,12 +10,12 @@
             <div class="bg-light border rounded-2">
                 {% for book in books %}
                     {% if book.cover %}
-                        <img src="{{ url_for('static', filename='cover_images/' + book.cover) }}" width="50" alt="">
+                        <img src="{{ url_for('static', path='cover_images/' + book.cover) }}" width="50" alt="">
                     {% endif %}
                     {% if book.authors %}
                         {{ book.authors|join(', ', attribute='name') }} -
                     {% endif %}
-                    <a href="{{ url_for('books.show_book', book_id=book.id) }}">{{ book.title }}</a><br>
+                    <a href="{{ url_for('show_book', book_id=book.id) }}">{{ book.title }}</a><br>
                 {% endfor %}
             </div>
         </div>

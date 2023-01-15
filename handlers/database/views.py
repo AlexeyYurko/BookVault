@@ -1,21 +1,16 @@
-from flask import Blueprint
+from fastapi import APIRouter
 from sqlalchemy.orm import Session
+from starlette import status
 
 from db.base import Base, engine
 from models import Book, Tag
 from models.author import Author
 from models.publishers import Publisher
 
-database_bp = Blueprint('db', __name__, template_folder='templates')
+router = APIRouter()
 
 
-@database_bp.route('/create_db', methods=['GET'])
-def create_db():
-    Base.metadata.create_all(engine)
-    return {"message": "ok"}
-
-
-@database_bp.route('/seed_db', methods=['GET'])
+@router.get("/seed_db", summary='Seed DB', status_code=status.HTTP_200_OK)
 def seed_db():
     with Session(bind=engine) as session:
         first_tag = Tag(name="Fantasy")
@@ -40,4 +35,10 @@ def seed_db():
         session.add(third_book)
         session.add(fourth_book)
         session.commit()
+    return {"db_seed": "ok"}
+
+
+@router.get("/create_db", summary='Create DB', status_code=status.HTTP_200_OK)
+def create_db():
+    Base.metadata.create_all(engine)
     return {"message": "ok"}

@@ -12,5 +12,5 @@ duplicate books to your library.
 
 (as simple as possible)
 - Python3.10
-- Flask
+- ~~Flask~~ FastAPI
 - SQLAlchemy
