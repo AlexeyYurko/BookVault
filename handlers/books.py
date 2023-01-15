@@ -29,7 +29,14 @@ def add_books():
     file_type = file.content_type
     if file_type not in ALLOWED_TYPES:
         return render_template('add_books.html', error="Invalid file type")
-    tags = [tag.strip() for tag in request.form['tags'].split(',')]
+    tags = [tag.strip() for tag in request.form['tags'].lower().split(',')]
     book_importer = ALLOWED_TYPES[file_type](file, tags)
     book_importer.process()
     return redirect(url_for('homepage.homepage'))
+
+
+@books_bp.route('/<book_id>', methods=['GET'])
+def show_book(book_id):
+    with Session(bind=engine) as session:
+        book = session.query(Book).options(joinedload(Book.tags)).filter(Book.id == book_id).first()
+        return render_template('book_view.html', book=book, tags=book.tags)
