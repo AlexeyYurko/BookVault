@@ -15,7 +15,7 @@
                     {% if book.authors %}
                         {{ book.authors|join(', ', attribute='name') }} -
                     {% endif %}
-                    {{ book.title }}<br>
+                    <a href="{{ url_for('books.show_book', book_id=book.id) }}">{{ book.title }}</a><br>
                 {% endfor %}
             </div>
         </div>
