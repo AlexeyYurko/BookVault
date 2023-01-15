@@ -12,7 +12,7 @@ class PdfImporter(BookImporter):
 
     def extract_cover(self):
         filename = self._cover_filename
-        pdf = pdfium.PdfDocument(self.file)
+        pdf = pdfium.PdfDocument(self.file.file._file)
         page = pdf.get_page(0)
         cover = page.render_topil(scale=2, optimise_mode=pdfium.OptimiseMode.NONE)
         path = os.path.join(IMAGES_PATH, filename)
@@ -21,7 +21,7 @@ class PdfImporter(BookImporter):
         return filename
 
     def get_metadata(self):
-        pdf = PdfFileReader(self.file)
+        pdf = PdfFileReader(self.file.file)
         pdf_info = pdf.metadata
         author = pdf_info.get('/Author', '')
         title = pdf_info.get('/Title', os.path.splitext(self.file.filename)[0])

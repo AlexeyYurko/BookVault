@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Table, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, Table, ForeignKey, func
 from sqlalchemy.orm import relationship
 
 from db.base import Base
@@ -29,6 +29,7 @@ class Book(Base):
     tags = relationship("Tag", secondary="books_tags", back_populates='books')
     authors = relationship("Author", secondary="books_authors", back_populates='books', lazy='joined')
     publisher_id = Column(Integer, ForeignKey('publishers.id'), nullable=True)
+    added_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class Tag(Base):
