@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from db.base import engine
 from models import Book, Tag
 from models.author import Author
+from models.language import Language
 
 
 class BookImporter:
@@ -73,6 +74,7 @@ class BookImporter:
             if book:
                 # TODO return something like Book Exists
                 return
+            language = session.query(Language).filter(Language.code == 'en').first()
             book = Book(
                 title=title,
                 authors=self._process_authors(author_names),
@@ -80,6 +82,7 @@ class BookImporter:
                 format=self.FORMAT,
                 cover=self.extract_cover(),
                 tags=self._process_tags(),
+                language=language
             )
             session.add(book)
             session.commit()
