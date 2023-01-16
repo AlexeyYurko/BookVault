@@ -5,6 +5,7 @@ from starlette import status
 from db.base import Base, engine
 from models import Book, Tag
 from models.author import Author
+from models.language import Language
 from models.publishers import Publisher
 
 router = APIRouter()
@@ -13,6 +14,8 @@ router = APIRouter()
 @router.get("/seed_db", summary='Seed DB', status_code=status.HTTP_200_OK)
 def seed_db():
     with Session(bind=engine) as session:
+        language = Language(code='en', name='English')
+
         first_tag = Tag(name="Fantasy")
         second_tag = Tag(name="Science Fiction")
 
@@ -23,13 +26,13 @@ def seed_db():
         second_publisher = Publisher(name='Macmillan')
 
         first_book = Book(title="The Lord of the Rings", authors=[first_author], isbn="0-395-19395-8", format='epub',
-                          tags=[first_tag], publisher=first_publisher)
+                          tags=[first_tag], publisher=first_publisher, language=language)
         second_book = Book(title="The Hobbit", authors=[first_author], isbn="0-395-19395-8", format='epub',
-                           tags=[first_tag], publisher=first_publisher)
+                           tags=[first_tag], publisher=first_publisher, language=language)
         third_book = Book(title="The Fellowship of the Ring", authors=[first_author], isbn="0-395-19395-8",
-                          format='epub', tags=[first_tag], publisher=first_publisher)
+                          format='epub', tags=[first_tag], publisher=first_publisher, language=language)
         fourth_book = Book(title="Foundation", authors=[second_author], isbn="0-395-19395-8", format='epub',
-                           tags=[second_tag], publisher=second_publisher)
+                           tags=[second_tag], publisher=second_publisher, language=language)
         session.add(first_book)
         session.add(second_book)
         session.add(third_book)
