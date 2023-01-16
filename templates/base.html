@@ -3,6 +3,7 @@
 <!-- CSS only -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
       integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+<script src="https://unpkg.com/htmx.org@1.8.4" integrity="sha384-wg5Y/JwF7VxGk4zLsJEcAojRtlVp1FKKdGy1qN+OMtdq72WRvX/EdRdqg/LOhYeV" crossorigin="anonymous"></script>
 <head>
     <meta charset="UTF-8">
     <title>BookVault</title>
@@ -15,7 +16,10 @@
             <div class="collapse navbar-collapse">
                 <form method="POST" class="d-flex w-100" action="{{ url_for('search_books') }}">
                     <input class="form-control me-3" placeholder="Search" aria-label="Search" name="query">
-                    <button class="btn btn-outline-success" type="submit">Search</button>
+                    <button class="btn btn-outline-success" type="submit"
+                            hx-post="{{ url_for('search_books') }}"
+                            hx-target="#books-list"
+                    >Search</button>
                 </form>
                 <ul class="navbar-nav me-auto mb-2 mb-md-0">
                     <li class="nav-item">
