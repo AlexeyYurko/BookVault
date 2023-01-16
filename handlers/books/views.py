@@ -22,7 +22,7 @@ def search_books(request: Request, query: str = Form(default='')):
     tags = []
     for book in books:
         tags.extend(iter(book.tags))
-    return templates.TemplateResponse('index.html', {'request': request, 'books': books, 'tags': set(tags)})
+    return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': set(tags)})
 
 
 @router.get('/add_books')
