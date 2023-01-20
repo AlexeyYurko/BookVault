@@ -25,6 +25,10 @@ class Book(Base):
     amazon_url = Column(String, nullable=True)
     goodreads_url = Column(String, nullable=True)
     edition = Column(String, nullable=True)
+
+    series_id = Column(Integer, ForeignKey('book_series.id'), nullable=True)
+    series = relationship("BookSeries", backref="books")
+
     checksum = Column(String, nullable=True)
     format = Column(String, nullable=False)
     tags = relationship("Tag", secondary="books_tags", back_populates='books')
@@ -43,3 +47,10 @@ class Tag(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     books = relationship("Book", secondary="books_tags", back_populates="tags")
+
+
+class BookSeries(Base):
+    __tablename__ = 'book_series'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
