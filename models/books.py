@@ -29,6 +29,9 @@ class Book(Base):
     series_id = Column(Integer, ForeignKey('book_series.id'), nullable=True)
     series = relationship("BookSeries", backref="books")
 
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=True)
+    collection = relationship("Collection", backref="books")
+
     checksum = Column(String, nullable=True)
     format = Column(String, nullable=False)
     tags = relationship("Tag", secondary="books_tags", back_populates='books')
@@ -51,6 +54,13 @@ class Tag(Base):
 
 class BookSeries(Base):
     __tablename__ = 'book_series'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+
+
+class Collection(Base):
+    __tablename__ = 'collections'
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
