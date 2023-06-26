@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette import status
 
+from db import get_db_session
 from db.base import Base, engine
 from models import Book, BookSeries, Tag
 from models.author import Author
@@ -12,37 +13,36 @@ router = APIRouter()
 
 
 @router.get("/seed_db", summary='Seed DB', status_code=status.HTTP_200_OK)
-def seed_db():
-    with Session(bind=engine) as session:
-        language = Language(code='en', name='English')
+def seed_db(db_session: Session = Depends(get_db_session)):
+    language = Language(code='en', name='English')
 
-        lor_series = BookSeries(name='Lord of the Rings')
+    lor_series = BookSeries(name='Lord of the Rings')
 
-        first_tag = Tag(name="Fantasy")
-        second_tag = Tag(name="Science Fiction")
+    first_tag = Tag(name="Fantasy")
+    second_tag = Tag(name="Science Fiction")
 
-        first_author = Author(name='J.R.R. Tolkien')
-        second_author = Author(name='Isaac Asimov')
+    first_author = Author(name='J.R.R. Tolkien')
+    second_author = Author(name='Isaac Asimov')
 
-        first_publisher = Publisher(name='Penguin Books')
-        second_publisher = Publisher(name='Macmillan')
+    first_publisher = Publisher(name='Penguin Books')
+    second_publisher = Publisher(name='Macmillan')
 
-        first_book = Book(title="The Lord of the Rings", authors=[first_author], isbn="0-395-19395-8", format='epub',
-                          tags=[first_tag], publisher=first_publisher, language=language,
-                          series=lor_series)
-        second_book = Book(title="The Hobbit", authors=[first_author], isbn="0-395-19395-8", format='epub',
-                           tags=[first_tag], publisher=first_publisher, language=language,
-                           series=lor_series)
-        third_book = Book(title="The Fellowship of the Ring", authors=[first_author], isbn="0-395-19395-8",
-                          format='epub', tags=[first_tag], publisher=first_publisher, language=language,
-                          series=lor_series)
-        fourth_book = Book(title="Foundation", authors=[second_author], isbn="0-395-19395-8", format='epub',
-                           tags=[second_tag], publisher=second_publisher, language=language)
-        session.add(first_book)
-        session.add(second_book)
-        session.add(third_book)
-        session.add(fourth_book)
-        session.commit()
+    first_book = Book(title="The Lord of the Rings", authors=[first_author], isbn="0-395-19395-8", format='epub',
+                      tags=[first_tag], publisher=first_publisher, language=language,
+                      series=lor_series)
+    second_book = Book(title="The Hobbit", authors=[first_author], isbn="0-395-19395-8", format='epub',
+                       tags=[first_tag], publisher=first_publisher, language=language,
+                       series=lor_series)
+    third_book = Book(title="The Fellowship of the Ring", authors=[first_author], isbn="0-395-19395-8",
+                      format='epub', tags=[first_tag], publisher=first_publisher, language=language,
+                      series=lor_series)
+    fourth_book = Book(title="Foundation", authors=[second_author], isbn="0-395-19395-8", format='epub',
+                       tags=[second_tag], publisher=second_publisher, language=language)
+    db_session.add(first_book)
+    db_session.add(second_book)
+    db_session.add(third_book)
+    db_session.add(fourth_book)
+    db_session.commit()
     return {"db_seed": "ok"}
 
 
