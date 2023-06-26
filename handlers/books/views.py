@@ -1,12 +1,10 @@
-from fastapi import APIRouter, Request, File, Form, UploadFile
-from sqlalchemy.orm import Session, joinedload
+from fastapi import APIRouter, Request, File, Form, UploadFile, Depends
 from starlette import status
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 
-from db.base import engine
+from handlers.books.dependencies import get_searched_books, get_book_by_id, get_book_by_tag
 from importers import DjvuImporter, EpubImporter, PdfImporter
-from models import Book
 
 ALLOWED_TYPES = {'application/pdf': PdfImporter, 'application/epub+zip': EpubImporter, 'application/djvu': DjvuImporter}
 
@@ -15,10 +13,8 @@ templates = Jinja2Templates(directory="templates")
 router = APIRouter()
 
 
-@router.post("/search", summary='Seed books', status_code=status.HTTP_200_OK)
-def search_books(request: Request, query: str = Form(default='')):
-    with Session(bind=engine) as session:
-        books = session.query(Book).options(joinedload(Book.tags)).filter(Book.title.ilike(f"%{query}%")).all()
+@router.post("/search", summary='Search books', status_code=status.HTTP_200_OK)
+def search_books(request: Request, books=Depends(get_searched_books)):
     tags = []
     for book in books:
         tags.extend(iter(book.tags))
@@ -43,18 +39,13 @@ def add_books(request: Request, file: UploadFile = File(), tags: str = Form(defa
 
 
 @router.get('/{book_id}')
-def show_book(request: Request, book_id: int):
-    with Session(bind=engine) as session:
-        book = session.query(Book).options(joinedload(Book.tags)).filter(Book.id == book_id).first()
-        return templates.TemplateResponse('book_view.html', {'request': request, 'book': book, 'tags': book.tags})
+def show_book(request: Request, book=Depends(get_book_by_id)):
+    return templates.TemplateResponse('book_view.html', {'request': request, 'book': book, 'tags': book.tags})
 
 
 @router.get('/by_tag/{tag_name}')
-def show_books_by_tag(request: Request, tag_name: str):
-    with Session(bind=engine) as session:
-        books = session.query(Book).options(joinedload(Book.tags)).filter(Book.tags.any(name=tag_name)).all()
-        tags = []
-        for book in books:
-            tags.extend(iter(book.tags))
-        return templates.TemplateResponse('books_list.html',
-                                          {'request': request, 'books': books, 'tags': set(tags)})
+def show_books_by_tag(request: Request, books=Depends(get_book_by_tag)):
+    tags = []
+    for book in books:
+        tags.extend(iter(book.tags))
+    return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': set(tags)})
