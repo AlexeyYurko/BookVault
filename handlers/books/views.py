@@ -46,4 +46,15 @@ def add_books(request: Request, file: UploadFile = File(), tags: str = Form(defa
 def show_book(request: Request, book_id: int):
     with Session(bind=engine) as session:
         book = session.query(Book).options(joinedload(Book.tags)).filter(Book.id == book_id).first()
-        return templates.TemplateResponse('book_view.html', {'request':request, 'book': book, 'tags': book.tags})
+        return templates.TemplateResponse('book_view.html', {'request': request, 'book': book, 'tags': book.tags})
+
+
+@router.get('/by_tag/{tag_name}')
+def show_books_by_tag(request: Request, tag_name: str):
+    with Session(bind=engine) as session:
+        books = session.query(Book).options(joinedload(Book.tags)).filter(Book.tags.any(name=tag_name)).all()
+        tags = []
+        for book in books:
+            tags.extend(iter(book.tags))
+        return templates.TemplateResponse('books_list.html',
+                                          {'request': request, 'books': books, 'tags': set(tags)})

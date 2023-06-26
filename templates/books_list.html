@@ -2,7 +2,10 @@
         <div class="d-grid gap-3" style="grid-template-columns: 2fr 10fr;">
             <div class="bg-light border rounded-2">
                 {% for tag in tags %}
-                    {{ tag.name }}<br>
+                    <a href="" style="background: darkgray; color: black; text-decoration: black; padding: 2px;
+                    border-radius: 5px; text-transform: lowercase; font-size: small;"
+                    hx-get="{{ url_for('show_books_by_tag', tag_name=tag.name) }}"
+                    hx-target="#books-list">{{ tag.name }}</a>
                 {% endfor %}
             </div>
             <div class="bg-light border rounded-2">

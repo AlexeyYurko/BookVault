@@ -10,3 +10,6 @@ class Author(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     books = relationship("Book", secondary="books_authors", back_populates="authors", lazy='joined')
+
+    def __repr__(self):
+        return f'{self.name}'

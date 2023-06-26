@@ -43,6 +43,9 @@ class Book(Base):
 
     added_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
+    def __repr__(self):
+        return f'[{self.id}] {self.title} - {self.authors}'
+
 
 class Tag(Base):
     __tablename__ = 'tags'
