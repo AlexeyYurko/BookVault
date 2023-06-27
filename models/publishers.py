@@ -1,12 +1,17 @@
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import relationship
+from typing import List
 
+from sqlalchemy import String
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+
+from db.annotations import int_pk
 from db.base import Base
+from models import Book
 
 
 class Publisher(Base):
     __tablename__ = 'publishers'
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    books = relationship("Book", backref="publisher")
+    id: Mapped[int_pk]
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+    books: Mapped[List["Book"]] = relationship(backref="publisher")
