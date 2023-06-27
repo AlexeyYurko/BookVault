@@ -16,7 +16,8 @@ router = APIRouter()
 def seed_db(db_session: Session = Depends(get_db_session)):
     language = Language(code='en', name='English')
 
-    lor_series = BookSeries(name='Lord of the Rings')
+    lotr_series = BookSeries(name='Lord of the Rings')
+    foundation_series = BookSeries(name='Foundation')
 
     first_tag = Tag(name="Fantasy")
     second_tag = Tag(name="Science Fiction")
@@ -27,17 +28,17 @@ def seed_db(db_session: Session = Depends(get_db_session)):
     first_publisher = Publisher(name='Penguin Books')
     second_publisher = Publisher(name='Macmillan')
 
-    first_book = Book(title="The Lord of the Rings", authors=[first_author], isbn="0-395-19395-8", format='epub',
+    first_book = Book(title="The Fellowship of the Ring", authors=[first_author], isbn="0-395-19395-8", format='pdf',
                       tags=[first_tag], publisher=first_publisher, language=language,
-                      series=lor_series)
+                      series=lotr_series)
     second_book = Book(title="The Hobbit", authors=[first_author], isbn="0-395-19395-8", format='epub',
                        tags=[first_tag], publisher=first_publisher, language=language,
-                       series=lor_series)
-    third_book = Book(title="The Fellowship of the Ring", authors=[first_author], isbn="0-395-19395-8",
+                       series=lotr_series)
+    third_book = Book(title="The Two Towers", authors=[first_author], isbn="0-395-19395-8",
                       format='epub', tags=[first_tag], publisher=first_publisher, language=language,
-                      series=lor_series)
+                      series=lotr_series)
     fourth_book = Book(title="Foundation", authors=[second_author], isbn="0-395-19395-8", format='epub',
-                       tags=[second_tag], publisher=second_publisher, language=language)
+                       tags=[second_tag], publisher=second_publisher, language=language, series=foundation_series)
     db_session.add(first_book)
     db_session.add(second_book)
     db_session.add(third_book)
