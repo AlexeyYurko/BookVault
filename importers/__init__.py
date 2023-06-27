@@ -1,4 +1,4 @@
 from .base import *
-from .pdf import *
-from .epub import *
 from .djvu import *
+from .epub import *
+from .pdf import *

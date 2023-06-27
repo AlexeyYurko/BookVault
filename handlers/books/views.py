@@ -1,10 +1,25 @@
-from fastapi import APIRouter, Request, File, Form, UploadFile, Depends
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Request,
+    UploadFile,
+)
 from starlette import status
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 
-from handlers.books.dependencies import get_searched_books, get_book_by_id, get_book_by_tag
-from importers import DjvuImporter, EpubImporter, PdfImporter
+from handlers.books.dependencies import (
+    get_book_by_id,
+    get_book_by_tag,
+    get_searched_books,
+)
+from importers import (
+    DjvuImporter,
+    EpubImporter,
+    PdfImporter,
+)
 
 ALLOWED_TYPES = {'application/pdf': PdfImporter, 'application/epub+zip': EpubImporter, 'application/djvu': DjvuImporter}
 

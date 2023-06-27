@@ -1,11 +1,18 @@
 from typing import List
 
-from fastapi import Depends, Form, HTTPException
+from fastapi import (
+    Depends,
+    Form,
+    HTTPException,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from db import Session, get_db_session
+from db import (
+    Session,
+    get_db_session,
+)
 from models import Book
 
 

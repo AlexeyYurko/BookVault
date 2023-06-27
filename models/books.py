@@ -1,8 +1,19 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import Column, DateTime, String, Table, ForeignKey, func
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Table,
+    func,
+)
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from db.annotations import int_pk
 from db.base import Base
@@ -40,7 +51,6 @@ class Book(Base):
     format: Mapped[str] = mapped_column(String, nullable=True)
 
     tags: Mapped[List["Tag"]] = relationship(secondary="books_tags", back_populates="books")
-    # authors: Mapped[List["Author"]] = relationship(secondary="books_authors", back_populates="books", lazy='joined')
     authors: Mapped[List["Author"]] = relationship(secondary="books_authors", back_populates="books")
 
     publisher_id: Mapped[int] = mapped_column(ForeignKey("publishers.id", name="book_publishers_fk"), nullable=True)
