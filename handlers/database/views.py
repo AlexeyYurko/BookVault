@@ -1,10 +1,20 @@
-from fastapi import APIRouter, Depends
+from fastapi import (
+    APIRouter,
+    Depends,
+)
 from sqlalchemy.orm import Session
 from starlette import status
 
 from db import get_db_session
-from db.base import Base, engine
-from models import Book, BookSeries, Tag
+from db.base import (
+    Base,
+    engine,
+)
+from models import (
+    Book,
+    BookSeries,
+    Tag,
+)
 from models.author import Author
 from models.language import Language
 from models.publishers import Publisher

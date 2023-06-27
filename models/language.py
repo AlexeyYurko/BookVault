@@ -1,7 +1,11 @@
 from typing import List
 
-from sqlalchemy import  String
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy import String
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from db.annotations import str_pk
 from db.base import Base

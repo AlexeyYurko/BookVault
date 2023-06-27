@@ -1,10 +1,17 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import (
+    APIRouter,
+    Depends,
+    Request,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.templating import Jinja2Templates
 
 from db import get_db_session
-from models import Book, Tag
+from models import (
+    Book,
+    Tag,
+)
 
 router = APIRouter()
 

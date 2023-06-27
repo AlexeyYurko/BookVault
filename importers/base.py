@@ -6,7 +6,10 @@ from abc import abstractmethod
 from sqlalchemy.orm import Session
 
 from db.base import engine
-from models import Book, Tag
+from models import (
+    Book,
+    Tag,
+)
 from models.author import Author
 from models.language import Language
 
