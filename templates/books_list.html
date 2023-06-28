@@ -1,23 +1,26 @@
-    <div class="container-fluid pb-3">
-        <div class="d-grid gap-3" style="grid-template-columns: 2fr 10fr;">
-            <div class="bg-light border rounded-2">
-                {% for tag in tags %}
-                    <a href="" style="background: darkgray; color: black; text-decoration: black; padding: 2px;
-                    border-radius: 5px; text-transform: lowercase; font-size: small;"
-                    hx-get="{{ url_for('show_books_by_tag', tag_name=tag.name) }}"
-                    hx-target="#books-list">{{ tag.name }}</a>
-                {% endfor %}
-            </div>
-            <div class="bg-light border rounded-2">
-                {% for book in books %}
-                    {% if book.cover %}
-                        <img src="{{ url_for('static', path='cover_images/' + book.cover) }}" width="50" alt="">
-                    {% endif %}
-                    {% if book.authors %}
-                        {{ book.authors|join(', ', attribute='name') }} -
-                    {% endif %}
-                    <a href="{{ url_for('show_book', book_id=book.id) }}">{{ book.title }}</a><br>
-                {% endfor %}
-            </div>
-        </div>
+<div class="grid gap-3 grid-cols-2" style="grid-template-columns: 2fr 10fr;">
+    <div class="mx-2 bg-light rounded-md">
+        {% for tag in tags %}
+            <a href=""
+               class="inline-block bg-gray-300 text-black text-decoration-black py-1 px-1 rounded-lg lowercase text-xs"
+               hx-get="{{ url_for('show_books_by_tag', tag_name=tag.name) }}"
+               hx-target="#books-list">{{ tag.name }}</a>
+        {% endfor %}
     </div>
+    <div class="mx-2 bg-light rounded-md">
+        {% for book in books %}
+            <div class="flex items-center justify-between py-1 border-b border-gray-300">
+                {% if book.cover %}
+                    <img class="book_list_thumbnail" src="{{ url_for('static', path='cover_images/' ~ book.cover) }}"
+                         width="50" alt="">
+                {% endif %}
+                <div class="flex-grow pl-2">
+                    {% if book.authors %}
+                        <span class="text-gray-700">{{ book.authors|join(', ', attribute='name') }} - </span>
+                    {% endif %}
+                    <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-black">{{ book.title }}</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>

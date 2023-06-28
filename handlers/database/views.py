@@ -29,8 +29,8 @@ def seed_db(db_session: Session = Depends(get_db_session)):
     lotr_series = BookSeries(name='Lord of the Rings')
     foundation_series = BookSeries(name='Foundation')
 
-    first_tag = Tag(name="Fantasy")
-    second_tag = Tag(name="Science Fiction")
+    first_tag = Tag(name="fantasy")
+    second_tag = Tag(name="science fiction")
 
     first_author = Author(name='J.R.R. Tolkien')
     second_author = Author(name='Isaac Asimov')

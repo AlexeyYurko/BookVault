@@ -21,5 +21,5 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/")
 def homepage(request: Request, db_session: Session = Depends(get_db_session)):
     books = db_session.scalars(select(Book)).all()
-    tags = db_session.scalars(select(Tag)).all()
+    tags = db_session.scalars(select(Tag).order_by(Tag.name)).all()
     return templates.TemplateResponse('index.html', {'request': request, 'books': books, 'tags': tags})
