@@ -13,6 +13,8 @@ from models import (
 from models.author import Author
 from models.language import Language
 
+escaping_table = str.maketrans({'#': 'sharp'})
+
 
 class BookImporter:
     FORMAT = None
@@ -32,7 +34,7 @@ class BookImporter:
     @property
     def _cover_filename(self):
         # TODO replace to unique name
-        return os.path.splitext(self.file.filename)[0] + ".jpg"
+        return os.path.splitext(self.file.filename)[0].translate(escaping_table) + ".jpg"
 
     def _calculate_checksum(self):
         file_hash = hashlib.blake2b()
@@ -46,23 +48,21 @@ class BookImporter:
             for tag in self.tags:
                 if not tag:
                     continue
+                tag = tag.translate(escaping_table)
                 db_tag = session.query(Tag).filter(Tag.name == tag).first()
                 if db_tag is None:
                     db_tag = Tag(name=tag)
                 db_tags.append(db_tag)
         return db_tags
 
-    def _process_authors(self, author_names):
-        author_names = author_names.split(', ')
-        if not author_names:
-            author_names = ['unknown']
+    @staticmethod
+    def _process_authors(author_names):
+        author_names = author_names.split(', ') or ['unknown']
         db_authors = []
         with Session(bind=engine) as session:
             for author_name in author_names:
                 author_name = author_name.strip()
-                author = session.query(Author).filter(Author.name == author_name).first()
-                if not author:
-                    author = Author(name=author_name)
+                author = session.query(Author).filter(Author.name == author_name).first() or Author(name=author_name)
                 db_authors.append(author)
         return db_authors
 
