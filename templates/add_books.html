@@ -1,24 +1,25 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="container">
+    <div class="container mx-auto flex flex-col items-center mt-4">
         <div class="col-md-12">
-            <h1>Add book</h1>
+            <h1 class="text-4xl font-semibold text-center">Add book</h1>
         </div>
         {% if error %}
             <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
         <form method="POST" enctype="multipart/form-data" action="{{ url_for('add_books') }}">
-            <div class="form-group mb-3">
-                <label for="file">Select book</label>
-                <input id="file" name="file" required="" type="file" class="form-control">
+            <div class="mb-3">
+                <label for="file" class="block font-medium">Select book</label>
+                <input id="file" name="file" required="" type="file" class="w-full p-2 rounded-lg">
             </div>
-            <div class="form-group mb-3">
-                <label for="tags">Tags</label>
-                <input id="tags" name="tags" type="text" value="" class="form-control">
+            <div class="mb-3">
+                <label for="tags" class="block font-medium">Tags</label>
+                <input id="tags" name="tags" type="text" value="" class="w-full p-2 border border-gray-300 rounded-lg">
             </div>
-            <button type="submit" class="btn btn-primary">Add book</button>
+            <div class="flex justify-center">
+                <button type="submit" class="px-6 py-3 text-white bg-blue-500 rounded-full hover:bg-blue-600">Add book</button>
+            </div>
         </form>
     </div>
-
 {% endblock %}
