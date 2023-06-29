@@ -4,7 +4,10 @@ import pypdfium2 as pdfium
 from PyPDF2 import PdfFileReader
 
 from config import IMAGES_PATH
-from importers.base import BookImporter
+from importers.base import (
+    BookImporter,
+    BookMetadata,
+)
 
 
 class PdfImporter(BookImporter):
@@ -24,6 +27,14 @@ class PdfImporter(BookImporter):
         pdf = PdfFileReader(self.file.file)
         pdf_info = pdf.metadata
         description = pdf_info.get('/Description', '')
-        authors = pdf_info.get('/Author', '')
-        title = pdf_info.get('/Title', os.path.splitext(self.file.filename)[0])
-        return authors, title, description
+        authors = str(pdf_info.get('/Author', '')).split(',')
+        title = pdf_info.get('/Title') or os.path.splitext(self.file.filename)[0]
+        return BookMetadata(
+            authors=authors,
+            title=title,
+            description=description,
+            publisher=None,
+            languages=None,
+            published_date=None,
+            tags=None
+        )

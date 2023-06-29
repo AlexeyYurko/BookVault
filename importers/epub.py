@@ -6,7 +6,7 @@ from ebooklib import epub
 from PIL import Image
 
 from config import IMAGES_PATH
-from importers.base import BookImporter
+from importers.base import BookImporter, BookMetadata
 
 
 class EpubImporter(BookImporter):
@@ -30,13 +30,37 @@ class EpubImporter(BookImporter):
 
         authors = [contributor[0] for contributor in self.book.get_metadata("DC", "creator")]
 
-        description = None
+        publisher = None
+        try:
+            publisher = self.book.get_metadata("DC", "publisher")[0][0]
+        except IndexError:
+            pass
+
+        languages = [language[0] for language in self.book.get_metadata("DC", "language")]
+
+        published_date = None
+        try:
+            published_date = self.book.get_metadata("DC", "date")[0][0]
+        except IndexError:
+            pass
+
+        description = ''
         try:
             description = self.book.get_metadata("DC", "description")[0][0]
         except IndexError:
             pass
 
-        return authors, title, description
+        tags = []
+
+        return BookMetadata(
+            authors=authors,
+            title=title,
+            description=description,
+            publisher=publisher,
+            languages=languages,
+            published_date=published_date,
+            tags=tags
+        )
 
     def _get_temp_ebook(self):
         with NamedTemporaryFile(delete=False) as temp_file:
