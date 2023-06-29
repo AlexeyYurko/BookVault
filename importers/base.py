@@ -38,6 +38,7 @@ class BookImporter:
 
     def _calculate_checksum(self):
         file_hash = hashlib.blake2b()
+        self.file.file.seek(0)
         while chunk := self.file.file.read(8192):
             file_hash.update(chunk)
         return file_hash.hexdigest()
@@ -56,11 +57,12 @@ class BookImporter:
         return db_tags
 
     @staticmethod
-    def _process_authors(author_names):
-        author_names = author_names.split(', ') or ['unknown']
+    def _process_authors(authors):
+        if isinstance(authors, str):
+            authors = authors.split(', ') or ['unknown']
         db_authors = []
         with Session(bind=engine) as session:
-            for author_name in author_names:
+            for author_name in authors:
                 author_name = author_name.strip()
                 author = session.query(Author).filter(Author.name == author_name).first() or Author(name=author_name)
                 db_authors.append(author)
@@ -69,7 +71,7 @@ class BookImporter:
     def process(self):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
-        author_names, title = self.get_metadata()
+        authors, title, description = self.get_metadata()
 
         checksum = self._calculate_checksum()
         with Session(bind=engine) as session:
@@ -80,12 +82,13 @@ class BookImporter:
             language = session.query(Language).filter(Language.code == 'en').first()
             book = Book(
                 title=title,
-                authors=self._process_authors(author_names),
+                authors=self._process_authors(authors),
                 checksum=checksum,
                 format=self.FORMAT,
                 cover=self.extract_cover(),
                 tags=self._process_tags(),
-                language=language
+                language=language,
+                description=description or '',
             )
             session.add(book)
             session.commit()
