@@ -2,6 +2,9 @@ import hashlib
 import logging
 import os
 from abc import abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
+from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -14,6 +17,16 @@ from models.author import Author
 from models.language import Language
 
 escaping_table = str.maketrans({'#': 'sharp'})
+
+@dataclass
+class BookMetadata:
+    title: str
+    authors: List[str]
+    description: str | None
+    publisher: str | None
+    languages: List[str] | None
+    tags: List[str] | None
+    published_date: datetime | None
 
 
 class BookImporter:
@@ -58,11 +71,11 @@ class BookImporter:
 
     @staticmethod
     def _process_authors(authors):
-        if isinstance(authors, str):
-            authors = authors.split(', ') or ['unknown']
         db_authors = []
         with Session(bind=engine) as session:
             for author_name in authors:
+                if author_name in [None, '']:
+                    continue
                 author_name = author_name.strip()
                 author = session.query(Author).filter(Author.name == author_name).first() or Author(name=author_name)
                 db_authors.append(author)
@@ -71,7 +84,7 @@ class BookImporter:
     def process(self):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
-        authors, title, description = self.get_metadata()
+        book_metadata = self.get_metadata()
 
         checksum = self._calculate_checksum()
         with Session(bind=engine) as session:
@@ -79,16 +92,17 @@ class BookImporter:
             if book:
                 # TODO return something like Book Exists
                 return
+            # TODO add support for different languages
             language = session.query(Language).filter(Language.code == 'en').first()
             book = Book(
-                title=title,
-                authors=self._process_authors(authors),
+                title=book_metadata.title,
+                authors=self._process_authors(book_metadata.authors),
                 checksum=checksum,
                 format=self.FORMAT,
                 cover=self.extract_cover(),
                 tags=self._process_tags(),
                 language=language,
-                description=description or '',
+                description=book_metadata.description
             )
             session.add(book)
             session.commit()
