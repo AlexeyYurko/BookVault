@@ -11,7 +11,7 @@
         <form method="POST" enctype="multipart/form-data" action="{{ url_for('add_books') }}">
             <div class="mb-3">
                 <label for="file" class="block font-medium">Select book</label>
-                <input id="file" name="file" required="" type="file" class="w-full p-2 rounded-lg">
+                <input id="files" name="files" required="" type="file" class="w-full p-2 rounded-lg" multiple>
             </div>
             <div class="mb-3">
                 <label for="tags" class="block font-medium">Tags</label>
