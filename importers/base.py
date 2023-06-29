@@ -15,6 +15,7 @@ from models import (
 )
 from models.author import Author
 from models.language import Language
+from models.publishers import Publisher
 
 escaping_table = str.maketrans({'#': 'sharp'})
 
@@ -81,6 +82,15 @@ class BookImporter:
                 db_authors.append(author)
         return db_authors
 
+    @staticmethod
+    def _process_publisher(publisher):
+        if not publisher:
+            return None
+        with Session(bind=engine) as session:
+            publisher = publisher.strip()
+            db_publisher = session.query(Publisher).filter(Publisher.name == publisher).first() or Publisher(name=publisher)
+        return db_publisher
+
     def process(self):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
@@ -102,6 +112,7 @@ class BookImporter:
                 cover=self.extract_cover(),
                 tags=self._process_tags(),
                 language=language,
+                publisher=self._process_publisher(book_metadata.publisher),
                 description=book_metadata.description
             )
             session.add(book)

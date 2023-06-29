@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -42,14 +44,15 @@ def show_add_books_view(request: Request):
 
 
 @router.post('/add_books')
-def add_books(request: Request, file: UploadFile = File(), tags: str = Form(default='')):
+def add_books(request: Request, files: List[UploadFile] = File(), tags: str = Form(default='')):
     tags = tags.lower().split(',')
-    file_type = file.content_type
-    if file_type not in ALLOWED_TYPES:
-        return templates.TemplateResponse('add_books.html', {'request': request, 'error': 'Invalid file type'})
-    tags = {tag.strip() for tag in tags}
-    book_importer = ALLOWED_TYPES[file_type](file, tags)
-    book_importer.process()
+    for file in files:
+        file_type = file.content_type
+        if file_type not in ALLOWED_TYPES:
+            continue
+        tags = {tag.strip() for tag in tags}
+        book_importer = ALLOWED_TYPES[file_type](file, tags)
+        book_importer.process()
     return RedirectResponse(request.url_for("homepage"), status_code=303)
 
 

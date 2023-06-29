@@ -26,7 +26,7 @@ class PdfImporter(BookImporter):
     def get_metadata(self):
         pdf = PdfFileReader(self.file.file)
         pdf_info = pdf.metadata
-        description = pdf_info.get('/Description', '')
+        description = pdf_info.get('/Description', pdf_info.get('/Subject')) or ''
         authors = str(pdf_info.get('/Author', '')).split(',')
         title = pdf_info.get('/Title') or os.path.splitext(self.file.filename)[0]
         return BookMetadata(

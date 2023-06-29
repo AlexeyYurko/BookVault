@@ -6,7 +6,10 @@ from ebooklib import epub
 from PIL import Image
 
 from config import IMAGES_PATH
-from importers.base import BookImporter, BookMetadata
+from importers.base import (
+    BookImporter,
+    BookMetadata,
+)
 
 
 class EpubImporter(BookImporter):
@@ -28,7 +31,7 @@ class EpubImporter(BookImporter):
             pass
         title = title if len(title) >= len(extended_title) else extended_title
 
-        authors = [contributor[0] for contributor in self.book.get_metadata("DC", "creator")]
+        authors = self._get_authors()
 
         publisher = None
         try:
@@ -62,15 +65,6 @@ class EpubImporter(BookImporter):
             tags=tags
         )
 
-    def _get_temp_ebook(self):
-        with NamedTemporaryFile(delete=False) as temp_file:
-            while True:
-                chunk = self.file.file.read(1024)
-                if not chunk:
-                    break
-                temp_file.write(chunk)
-        return epub.read_epub(temp_file.name)
-
     def extract_cover(self):
         filename = None
 
@@ -95,3 +89,24 @@ class EpubImporter(BookImporter):
                 break
 
         return filename
+
+    def _get_authors(self):
+        authors = [contributor[0] for contributor in self.book.get_metadata("DC", "creator")]
+        cleaned_authors = []
+        for author in authors:
+            if ' and ' in author:
+                and_authors = author.split(' and ')
+                cleaned_authors.extend(and_authors)
+            else:
+                cleaned_authors.append(author)
+        authors = cleaned_authors
+        return authors
+
+    def _get_temp_ebook(self):
+        with NamedTemporaryFile(delete=False) as temp_file:
+            while True:
+                chunk = self.file.file.read(1024)
+                if not chunk:
+                    break
+                temp_file.write(chunk)
+        return epub.read_epub(temp_file.name)
