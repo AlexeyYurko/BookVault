@@ -9,6 +9,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from db.base import engine
+from importers.exceptions import ImportBookException
 from models import (
     Book,
     Tag,
@@ -94,7 +95,11 @@ class BookImporter:
     def process(self):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
-        book_metadata = self.get_metadata()
+        try:
+            book_metadata = self.get_metadata()
+        except ImportBookException as e:
+            logging.error(f'Exception while importing {self.file}, {e}')
+            return
 
         checksum = self._calculate_checksum()
         with Session(bind=engine) as session:

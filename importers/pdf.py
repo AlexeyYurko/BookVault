@@ -1,7 +1,7 @@
 import os
 
 import pypdfium2 as pdfium
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfReader
 
 from config import IMAGES_PATH
 from importers.base import (
@@ -17,7 +17,7 @@ class PdfImporter(BookImporter):
         if reader_type == 'pdfium':
             return pdfium.PdfDocument(self._get_file_attribute())
         elif reader_type == 'pypdf':
-            return PdfFileReader(self._get_file_attribute())
+            return PdfReader(self._get_file_attribute())
 
     def _get_file_attribute(self):
         return self.file.file._file
