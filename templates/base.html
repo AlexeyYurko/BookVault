@@ -8,6 +8,20 @@
     <script src="https://unpkg.com/htmx.org@1.8.4"
             integrity="sha384-wg5Y/JwF7VxGk4zLsJEcAojRtlVp1FKKdGy1qN+OMtdq72WRvX/EdRdqg/LOhYeV"
             crossorigin="anonymous"></script>
+    <style>
+        .thumbnail_container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .book_list_thumbnail {
+            transition: width 0.1s ease-in-out;
+        }
+
+        .thumbnail_container:hover .book_list_thumbnail {
+            width: 300px;
+        }
+    </style>
 </head>
 <body class="h-screen bg-gray-100">
 <header class="sticky top-0 bg-white border-b border-gray-200">
