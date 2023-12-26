@@ -1,0 +1,2 @@
+class ImportBookException(Exception):
+    pass

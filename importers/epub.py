@@ -1,3 +1,4 @@
+import logging
 import os
 from io import BytesIO
 from tempfile import NamedTemporaryFile
@@ -10,6 +11,7 @@ from importers.base import (
     BookImporter,
     BookMetadata,
 )
+from importers.exceptions import ImportBookException
 
 
 class EpubImporter(BookImporter):
@@ -20,7 +22,11 @@ class EpubImporter(BookImporter):
         self.book = None
 
     def get_metadata(self):
-        self.book = self._get_temp_ebook()
+        try:
+            self.book = self._get_temp_ebook()
+        except Exception as e:
+            logging.info('Failed to import book')
+            raise ImportBookException from e
 
         title = self.book.get_metadata("DC", 'title')[0][0]
 
