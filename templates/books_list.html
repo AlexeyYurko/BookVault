@@ -10,16 +10,22 @@
     <div class="mx-2 bg-light rounded-md">
         {% for book in books %}
             <div class="flex items-center justify-between py-1 border-b border-gray-300">
-                {% if book.cover %}
-                    <img class="book_list_thumbnail" src="{{ url_for('static', path='cover_images/' ~ book.cover) }}"
-                         width="50" alt="">
-                {% endif %}
-                <div class="flex-grow pl-2">
-                    {% if book.authors %}
-                        <span class="text-gray-700">{{ book.authors|join(', ', attribute='name') }} - </span>
+                <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-blue flex items-center">
+                    {% if book.cover %}
+                        <div class="thumbnail_container">
+                            <img class="book_list_thumbnail mr-2"
+                                 src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" width="50" alt="">
+                        </div>
                     {% endif %}
-                    <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-black">{{ book.title }}</a>
-                </div>
+                    <div class="flex flex-col">
+                        <span class="text-gray-700">
+                            {% if book.authors %}
+                                {{ book.authors|join(', ', attribute='name') }} -
+                            {% endif %}
+                            {{ book.title }}
+                        </span>
+                    </div>
+                </a>
             </div>
         {% endfor %}
     </div>
