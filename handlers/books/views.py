@@ -3,6 +3,7 @@ from fastapi import (
     Depends,
     File,
     Form,
+    HTTPException,
     Request,
     UploadFile,
 )
@@ -10,6 +11,10 @@ from starlette import status
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 
+from db import (
+    Session,
+    get_db_session,
+)
 from handlers.books.dependencies import (
     get_book_by_id,
     get_book_by_tag,
@@ -19,6 +24,10 @@ from importers import (
     DjvuImporter,
     EpubImporter,
     PdfImporter,
+)
+from models import (
+    Book,
+    Tag,
 )
 
 ALLOWED_TYPES = {'application/pdf': PdfImporter, 'application/epub+zip': EpubImporter, 'application/djvu': DjvuImporter}
@@ -65,3 +74,31 @@ def show_books_by_tag(request: Request, books=Depends(get_book_by_tag)):
     for book in books:
         tags.extend(iter(book.tags))
     return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': set(tags)})
+
+
+@router.post("/books/{book_id}/tags")
+def add_tag(request: Request, book_id: int, tag_name: str = Form(...), db_session: Session = Depends(get_db_session)):
+    book = db_session.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+    
+    tag = Tag.get_or_create(db_session, tag_name)
+    book.add_tag(tag)
+    db_session.commit()
+    
+    return templates.TemplateResponse("tags.html", {"request": request, "book": book})
+
+@router.delete("/books/{book_id}/tags/{tag_id}")
+def remove_tag(request: Request, book_id: int, tag_id: int, db_session: Session = Depends(get_db_session)):
+    book = db_session.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+    
+    tag = db_session.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+    
+    book.remove_tag(tag)
+    db_session.commit()
+    
+    return templates.TemplateResponse("tags.html", {"request": request, "book": book})

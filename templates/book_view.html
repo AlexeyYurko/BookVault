@@ -1,41 +1,55 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="book-details">
-        <div class="cover">
-            {% if book.cover %}
-                <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="Book Cover">
-            {% endif %}
-        </div>
-        <div class="info">
-            <h1>{{ book.title }}</h1>
-            <p><strong>Authors:</strong> {% for author in book.authors %} {{ author.name }} {% endfor %}</p>
-            <p><strong>Edition:</strong> {{ book.edition }}</p>
-            <p><strong>ISBN:</strong> {{ book.isbn }}</p>
-            <p><strong>Description:</strong><small> {{ book.description|safe }}</small></p>
-            <p><strong>Amazon URL:</strong>
-                {% if book.amazon_url %}
-                    <a href="{{ book.amazon_url }}">
-                    {{ book.amazon_url }}
-                {% endif %}</a>
-            </p>
-            <p><strong>Goodreads URL:</strong>
-                {% if book.goodreads_url %}
-                    <a href="{{ book.goodreads_url }}">{{ book.goodreads_url }}
-                {% endif %}
-                </a>
-            </p>
-            <!-- Include other book fields -->
-            <p><strong>Series:</strong> {% if book.series %} {{ book.series[0].name }} {% else %} None {% endif %}</p>
-            <p><strong>Collection:</strong> {% if book.collection %} {{ book.collection[0].name }} {% else %}
-                None {% endif %}</p>
-            <p><strong>Format:</strong> {{ book.format }}</p>
-            <p><strong>Tags:</strong> {% for tag in book.tags %} {{ tag.name }} {% endfor %}</p>
-            <p><strong>Publisher:</strong> {% if book.publisher %} {{ book.publisher.name }} {% else %} None {% endif %}
-            </p>
-            <p><strong>Language Code:</strong> {{ book.language_code }}</p>
-            <p><strong>Added At:</strong> {{ book.added_at }}</p>
-            <!-- Add other book details here -->
-        </div>
+<div class="book-details">
+    <div class="cover">
+        {% if book.cover %}
+        <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="Book Cover">
+        {% endif %}
     </div>
+    <div class="info">
+        <h1>{{ book.title }}</h1>
+        <p><strong>Authors:</strong> {% for author in book.authors %} {{ author.name }} {% endfor %}</p>
+        <p><strong>Edition:</strong> {{ book.edition }}</p>
+        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+        <p><strong>Description:</strong><small> {{ book.description|safe }}</small></p>
+        <p><strong>Amazon URL:</strong>
+            {% if book.amazon_url %}
+            <a href="{{ book.amazon_url }}">
+                {{ book.amazon_url }}
+                {% endif %}</a>
+        </p>
+        <p><strong>Goodreads URL:</strong>
+            {% if book.goodreads_url %}
+            <a href="{{ book.goodreads_url }}">{{ book.goodreads_url }}
+                {% endif %}
+            </a>
+        </p>
+        <!-- Include other book fields -->
+        <p><strong>Series:</strong> {% if book.series %} {{ book.series[0].name }} {% else %} None {% endif %}</p>
+        <p><strong>Collection:</strong> {% if book.collection %} {{ book.collection[0].name }} {% else %}
+            None {% endif %}</p>
+        <p><strong>Format:</strong> {{ book.format }}</p>
+        <p><strong>Tags:</strong>
+            <span id="tags-container">
+                {% for tag in book.tags %}
+                <span class="tag">
+                    {{ tag.name }}
+                    <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}"
+                        hx-target="#tags-container" class="remove-tag">×</button>
+                </span>
+                {% endfor %}
+            </span>
+        </p>
+        <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container">
+            <input type="text" name="tag_name" placeholder="Add a new tag" required>
+            <button type="submit">Add Tag</button>
+        </form>
+        <p><strong>Publisher:</strong> {% if book.publisher %} {{ book.publisher.name }} {% else %} None {% endif %}
+        </p>
+        <p><strong>Language Code:</strong> {{ book.language_code }}</p>
+        <p><strong>Added At:</strong> {{ book.added_at }}</p>
+        <!-- Add other book details here -->
+    </div>
+</div>
 {% endblock %}
