@@ -17,12 +17,14 @@
                 {% if book.amazon_url %}
                     <a href="{{ book.amazon_url }}">
                     {{ book.amazon_url }}
-                {% endif %}</a></p>
+                {% endif %}</a>
+            </p>
             <p><strong>Goodreads URL:</strong>
                 {% if book.goodreads_url %}
                     <a href="{{ book.goodreads_url }}">{{ book.goodreads_url }}
                 {% endif %}
-                </a></p>
+                </a>
+            </p>
             <!-- Include other book fields -->
             <p><strong>Series:</strong> {% if book.series %} {{ book.series[0].name }} {% else %} None {% endif %}</p>
             <p><strong>Collection:</strong> {% if book.collection %} {{ book.collection[0].name }} {% else %}
@@ -36,52 +38,4 @@
             <!-- Add other book details here -->
         </div>
     </div>
-    <style>
-        .book-details {
-            display: flex;
-            flex-direction: row;
-            max-width: 800px; /* Adjust max width according to your design */
-            margin: 0 auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .cover img {
-            max-width: 200px; /* Adjust cover image width */
-            max-height: 300px; /* Adjust cover image height */
-            border-radius: 8px;
-        }
-
-        .info {
-            margin-left: 20px;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-
-        .info h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .info p {
-            margin-bottom: 8px;
-        }
-
-        .info strong {
-            font-weight: bold;
-        }
-
-        .info a {
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .info a:hover {
-            text-decoration: underline;
-        }
-
-        /* Additional styling as needed */
-    </style>
 {% endblock %}

@@ -1,28 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>BookVault</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.6/flowbite.min.css" rel="stylesheet"/>
+    <link href="{{ url_for('static', path='css/styles.css') }}" rel="stylesheet"/>
     <script src="https://unpkg.com/htmx.org@1.8.4"
             integrity="sha384-wg5Y/JwF7VxGk4zLsJEcAojRtlVp1FKKdGy1qN+OMtdq72WRvX/EdRdqg/LOhYeV"
             crossorigin="anonymous"></script>
-    <style>
-        .thumbnail_container {
-            position: relative;
-            display: inline-block;
-        }
-
-        .book_list_thumbnail {
-            transition: width 0.1s ease-in-out;
-        }
-
-        .thumbnail_container:hover .book_list_thumbnail {
-            width: 300px;
-        }
-    </style>
 </head>
+
 <body class="h-screen bg-gray-100">
 <header class="sticky top-0 bg-white border-b border-gray-200">
     {% include "navbar.html" %}
@@ -33,4 +22,5 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.6/flowbite.min.js"></script>
 </body>
+
 </html>
