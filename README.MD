@@ -11,6 +11,6 @@ duplicate books to your library.
 ## Tooling
 
 (as simple as possible)
-- Python3.10
+- Python3.12
 - ~~Flask~~ FastAPI
 - SQLAlchemy
