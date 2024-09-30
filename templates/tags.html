@@ -1,0 +1,7 @@
+{% for tag in book.tags %}
+<span class="tag">
+    {{ tag.name }}
+    <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}" hx-target="#tags-container"
+        class="remove-tag">×</button>
+</span>
+{% endfor %}
