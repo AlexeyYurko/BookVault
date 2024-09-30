@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import (
     Depends,
     Form,
@@ -16,7 +14,7 @@ from db import (
 from models import Book
 
 
-def get_searched_books(query: str = Form(default=''), db_session: Session = Depends(get_db_session)) -> List[Book]:
+def get_searched_books(query: str = Form(default=''), db_session: Session = Depends(get_db_session)) -> list[Book]:
     return db_session.scalars(select(Book).where(Book.title.ilike(f"%{query}%"))).all()
 
 
@@ -30,5 +28,5 @@ def get_book_by_id(book_id: int, db_session: Session = Depends(get_db_session)) 
     return book
 
 
-def get_book_by_tag(tag_name: str, db_session: Session = Depends(get_db_session)) -> List[Book]:
+def get_book_by_tag(tag_name: str, db_session: Session = Depends(get_db_session)) -> list[Book]:
     return db_session.scalars(select(Book).where(Book.tags.any(name=tag_name))).all()

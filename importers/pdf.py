@@ -1,4 +1,5 @@
-import os
+import logging
+from pathlib import Path
 
 import pypdfium2 as pdfium
 from PyPDF2 import PdfReader
@@ -8,6 +9,8 @@ from importers.base import (
     BookImporter,
     BookMetadata,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PdfImporter(BookImporter):
@@ -27,9 +30,9 @@ class PdfImporter(BookImporter):
         pdf = self._read_pdf_file('pdfium')
         page = pdf.get_page(0)
         cover = page.render_topil(scale=2, optimise_mode=pdfium.OptimiseMode.NONE)
-        path = os.path.join(IMAGES_PATH, filename)
-        print(f"Saving {filename}, width {cover.width}, height {cover.height}")
-        cover.save(path)
+        path = Path(IMAGES_PATH, filename)
+        logger.info(f"Saving {filename}, width {cover.width}, height {cover.height}")
+        cover.save(str(path))
         return filename
 
     def get_metadata(self):

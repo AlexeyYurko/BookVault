@@ -4,7 +4,6 @@ import os
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -23,11 +22,11 @@ escaping_table = str.maketrans({'#': 'sharp'})
 @dataclass
 class BookMetadata:
     title: str
-    authors: List[str]
+    authors: list[str]
     description: str | None
     publisher: str | None
-    languages: List[str] | None
-    tags: List[str] | None
+    languages: list[str] | None
+    tags: list[str] | None
     published_date: datetime | None
 
 
@@ -64,10 +63,8 @@ class BookImporter:
             for tag in self.tags:
                 if not tag:
                     continue
-                tag = tag.translate(escaping_table)
-                db_tag = session.query(Tag).filter(Tag.name == tag).first()
-                if db_tag is None:
-                    db_tag = Tag(name=tag)
+                cleaned_tag = tag.translate(escaping_table)
+                db_tag = session.query(Tag).filter(Tag.name == cleaned_tag).first() or Tag(name=cleaned_tag)
                 db_tags.append(db_tag)
         return db_tags
 
@@ -78,8 +75,8 @@ class BookImporter:
             for author_name in authors:
                 if author_name in [None, '']:
                     continue
-                author_name = author_name.strip()
-                author = session.query(Author).filter(Author.name == author_name).first() or Author(name=author_name)
+                cleaned_author_name = author_name.strip()
+                author = session.query(Author).filter(Author.name == cleaned_author_name).first() or Author(name=cleaned_author_name)
                 db_authors.append(author)
         return db_authors
 

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from sqlalchemy import (
     Column,
@@ -42,16 +41,16 @@ class Book(Base):
     edition: Mapped[str] = mapped_column(String, nullable=True)
 
     series_id: Mapped[int] = mapped_column(ForeignKey("book_series.id", name="book_series_fk"), nullable=True)
-    series: Mapped[List["BookSeries"]] = relationship(backref="books")
+    series: Mapped[list["BookSeries"]] = relationship(backref="books")
 
     collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", name="book_collections_fk"), nullable=True)
-    collection: Mapped[List["Collection"]] = relationship(backref="books")
+    collection: Mapped[list["Collection"]] = relationship(backref="books")
 
     checksum: Mapped[str] = mapped_column(String, nullable=True)
     format: Mapped[str] = mapped_column(String, nullable=True)
 
-    tags: Mapped[List["Tag"]] = relationship(secondary="books_tags", back_populates="books")
-    authors: Mapped[List["Author"]] = relationship(secondary="books_authors", back_populates="books")
+    tags: Mapped[list["Tag"]] = relationship(secondary="books_tags", back_populates="books")
+    authors: Mapped[list["Author"]] = relationship(secondary="books_authors", back_populates="books")
 
     publisher_id: Mapped[int] = mapped_column(ForeignKey("publishers.id", name="book_publishers_fk"), nullable=True)
 
@@ -69,7 +68,7 @@ class Tag(Base):
     id: Mapped[int_pk]
     name: Mapped[str] = mapped_column(String, nullable=False)
 
-    books: Mapped[List["Book"]] = relationship(secondary="books_tags", back_populates="tags")
+    books: Mapped[list["Book"]] = relationship(secondary="books_tags", back_populates="tags")
 
 
 class BookSeries(Base):

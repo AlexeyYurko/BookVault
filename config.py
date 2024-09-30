@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 TEMP_DIR = "tmp"
-IMAGES_PATH = os.path.join('static', 'cover_images')
+IMAGES_PATH = Path(Path('static'), 'cover_images')

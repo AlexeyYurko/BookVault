@@ -1,5 +1,3 @@
-from typing import List
-
 from sqlalchemy import String
 from sqlalchemy.orm import (
     Mapped,
@@ -18,4 +16,4 @@ class Language(Base):
     code: Mapped[str_pk]
     name: Mapped[str] = mapped_column(String, nullable=False)
 
-    books: Mapped[List["Book"]] = relationship(backref="language")
+    books: Mapped[list["Book"]] = relationship(backref="language")
