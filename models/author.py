@@ -1,5 +1,3 @@
-from typing import List
-
 from sqlalchemy import String
 from sqlalchemy.orm import (
     Mapped,
@@ -18,7 +16,7 @@ class Author(Base):
     id: Mapped[int_pk]
     name: Mapped[str] = mapped_column(String, nullable=False)
 
-    books: Mapped[List[Book]] = relationship(secondary="books_authors", back_populates="authors", lazy='joined')
+    books: Mapped[list[Book]] = relationship(secondary="books_authors", back_populates="authors", lazy='joined')
 
 
     def __repr__(self):

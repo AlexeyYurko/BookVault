@@ -1,6 +1,7 @@
+import contextlib
 import logging
-import os
 from io import BytesIO
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from ebooklib import epub
@@ -31,33 +32,26 @@ class EpubImporter(BookImporter):
         title = self.book.get_metadata("DC", 'title')[0][0]
 
         extended_title = ''
-        try:
+        with contextlib.suppress(IndexError):
             extended_title = self.book.get_metadata("DC", 'extended-title')[1][0]
-        except IndexError:
-            pass
+
         title = title if len(title) >= len(extended_title) else extended_title
 
         authors = self._get_authors()
 
         publisher = None
-        try:
+        with contextlib.suppress(IndexError):
             publisher = self.book.get_metadata("DC", "publisher")[0][0]
-        except IndexError:
-            pass
 
         languages = [language[0] for language in self.book.get_metadata("DC", "language")]
 
         published_date = None
-        try:
+        with contextlib.suppress(IndexError):
             published_date = self.book.get_metadata("DC", "date")[0][0]
-        except IndexError:
-            pass
 
         description = ''
-        try:
+        with contextlib.suppress(IndexError):
             description = self.book.get_metadata("DC", "description")[0][0]
-        except IndexError:
-            pass
 
         tags = []
 
@@ -86,12 +80,12 @@ class EpubImporter(BookImporter):
                 'image/png',
             ]:
                 filename = self._cover_filename
-                path = os.path.join(IMAGES_PATH, filename)
+                path = Path(IMAGES_PATH/ filename)
                 cover_image = item.get_content()
                 image = Image.open(BytesIO(cover_image))
                 if image.mode == 'RGBA':
                     image = image.convert('RGB')
-                image.save(path)
+                image.save(str(path))
                 break
 
         return filename

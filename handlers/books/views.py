@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -44,7 +42,7 @@ def show_add_books_view(request: Request):
 
 
 @router.post('/add_books')
-def add_books(request: Request, files: List[UploadFile] = File(), tags: str = Form(default='')):
+def add_books(request: Request, files: list[UploadFile] = File(), tags: str = Form(default='')):
     tags = tags.lower().split(',')
     for file in files:
         file_type = file.content_type
@@ -53,7 +51,7 @@ def add_books(request: Request, files: List[UploadFile] = File(), tags: str = Fo
         tags = {tag.strip() for tag in tags}
         book_importer = ALLOWED_TYPES[file_type](file, tags)
         book_importer.process()
-    return RedirectResponse(request.url_for("homepage"), status_code=303)
+    return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get('/{book_id}')
