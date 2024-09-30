@@ -7,25 +7,70 @@
         {% endfor %}
     </div>
     <div class="mx-2 bg-light overflow-y-auto" style="max-height: calc(100vh - 80px);">
-        {% for book in books %}
-            <div class="flex items-center justify-between py-1 border-b border-gray-300">
-                <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-blue flex items-center">
-                    {% if book.cover %}
-                        <div class="thumbnail_container">
-                            <img class="book_list_thumbnail mr-2"
-                                 src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" width="50" alt="">
-                        </div>
-                    {% endif %}
-                    <div class="flex flex-col">
-                    <span class="text-gray-700">
-                        {% if book.authors %}
-                            {{ book.authors|join(', ', attribute='name') }} -
-                        {% endif %}
-                        {{ book.title }}
-                    </span>
-                    </div>
-                </a>
+        <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post">
+            <div class="sticky top-0 z-10 mb-4 p-4 bg-white border-b border-gray-200 shadow-sm">
+                <div class="flex flex-wrap items-center gap-2">
+                    <select name="action" id="action-select"
+                            class="form-select px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="update_tags">Update Tags</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <input type="text" name="tags" placeholder="New tags (comma-separated)"
+                           class="form-input px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <button type="submit"
+                            class="btn btn-primary bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">
+                        Apply
+                    </button>
+                </div>
             </div>
-        {% endfor %}
+            {% for book in books %}
+                <div class="flex items-center justify-between py-2 px-3 border-b border-gray-300 hover:bg-gray-50">
+                    <div class="flex items-center space-x-3 w-full">
+                        <input type="checkbox" name="book_ids" value="{{ book.id }}"
+                               class="form-checkbox h-5 w-5 text-blue-600">
+                        <a href="{{ url_for('show_book', book_id=book.id) }}"
+                           class="text-blue-600 flex items-center flex-grow">
+                            {% if book.cover %}
+                                <div class="thumbnail_container flex-shrink-0">
+                                    <img class="book_list_thumbnail object-cover h-16 w-12 mr-3"
+                                         src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="">
+                                </div>
+                            {% endif %}
+                            <div class="flex flex-col">
+                                <span class="text-gray-900 font-medium">{{ book.title }}</span>
+                                {% if book.authors %}
+                                    <span class="text-gray-600 text-sm">{{ book.authors|join(', ', attribute='name') }}</span>
+                                {% endif %}
+                                {% if book.tags %}
+                                    <div class="mt-1">
+                                        {% for tag in book.tags %}
+                                            <span
+                                                    class="inline-block bg-gray-200 rounded-full px-1 py-0.5 text-[0.5em] leading-none font-medium text-gray-700 mr-0.5 mb-0.5">
+                                    {{ tag.name }}
+                                </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </form>
     </div>
 </div>
+
+<script>
+    document.getElementById('batch-action-form').addEventListener('submit', function (e) {
+        const action = document.getElementById('action-select').value;
+        const selectedBooks = document.querySelectorAll('input[name="book_ids"]:checked');
+
+        if (action === 'delete' && selectedBooks.length > 0) {
+            e.preventDefault();
+            const confirmMessage = `Are you sure you want to delete ${selectedBooks.length} book(s)?`;
+            if (confirm(confirmMessage)) {
+                this.submit();
+            }
+        }
+    });
+</script>

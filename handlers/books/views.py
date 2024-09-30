@@ -81,24 +81,46 @@ def add_tag(request: Request, book_id: int, tag_name: str = Form(...), db_sessio
     book = db_session.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
-    
+
     tag = Tag.get_or_create(db_session, tag_name)
     book.add_tag(tag)
     db_session.commit()
-    
+
     return templates.TemplateResponse("tags.html", {"request": request, "book": book})
+
 
 @router.delete("/books/{book_id}/tags/{tag_id}")
 def remove_tag(request: Request, book_id: int, tag_id: int, db_session: Session = Depends(get_db_session)):
     book = db_session.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
-    
+
     tag = db_session.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
-    
+
     book.remove_tag(tag)
     db_session.commit()
-    
+
     return templates.TemplateResponse("tags.html", {"request": request, "book": book})
+
+
+@router.post("/batch_action")
+def batch_action(
+        request: Request,
+        action: str = Form(...),
+        book_ids: list[int] = Form(...),
+        tags: str = Form(default=''),
+        db_session: Session = Depends(get_db_session)
+):
+    if action == "delete":
+        db_session.query(Book).filter(Book.id.in_(book_ids)).delete(synchronize_session=False)
+    elif action == "update_tags":
+        new_tags = [tag.strip().lower() for tag in tags.split(',') if tag.strip()]
+        for book_id in book_ids:
+            book = db_session.query(Book).get(book_id)
+            if book:
+                book.tags = [Tag.get_or_create(db_session, tag_name) for tag_name in new_tags]
+
+    db_session.commit()
+    return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)
