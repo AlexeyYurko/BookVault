@@ -7,15 +7,15 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from db.base import engine
-from importers.exceptions import ImportBookException
-from models import (
+from app.db.base import engine
+from app.services.importers.exceptions import ImportBookException
+from app.models import (
     Book,
     Tag,
 )
-from models.author import Author
-from models.language import Language
-from models.publishers import Publisher
+from app.models.author import Author
+from app.models.language import Language
+from app.models.publishers import Publisher
 
 escaping_table = str.maketrans({'#': 'sharp'})
 

@@ -7,11 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from db import (
+from app.db import (
     Session,
     get_db_session,
 )
-from models import Book
+from app.models import Book
 
 
 def get_searched_books(query: str = Form(default=''), db_session: Session = Depends(get_db_session)) -> list[Book]:

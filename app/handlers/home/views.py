@@ -5,11 +5,11 @@ from fastapi import (
 )
 from starlette.templating import Jinja2Templates
 
-from handlers.home.dependencies import (
+from app.handlers.home.dependencies import (
     get_all_books,
     get_tags_linked_to_books,
 )
-from models import (
+from app.models import (
     Book,
     Tag,
 )

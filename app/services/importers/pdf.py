@@ -4,8 +4,8 @@ from pathlib import Path
 import pypdfium2 as pdfium
 from PyPDF2 import PdfReader
 
-from config import IMAGES_PATH
-from importers.base import (
+from app.config import IMAGES_PATH
+from app.services.importers.base import (
     BookImporter,
     BookMetadata,
 )

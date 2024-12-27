@@ -5,9 +5,9 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from db.annotations import str_pk
-from db.base import Base
-from models import Book
+from app.db.annotations import str_pk
+from app.db.base import Base
+from app.models import Book
 
 
 class Language(Base):

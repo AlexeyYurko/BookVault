@@ -5,19 +5,19 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from starlette import status
 
-from db import get_db_session
-from db.base import (
+from app.db import get_db_session
+from app.db.base import (
     Base,
     engine,
 )
-from models import (
+from app.models import (
     Book,
     BookSeries,
     Tag,
 )
-from models.author import Author
-from models.language import Language
-from models.publishers import Publisher
+from app.models.author import Author
+from app.models.language import Language
+from app.models.publishers import Publisher
 
 router = APIRouter()
 
