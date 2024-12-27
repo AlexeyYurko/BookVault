@@ -42,3 +42,4 @@ app/config_local.yml
 *.db
 
 static/cover_images/*.*
+.env
