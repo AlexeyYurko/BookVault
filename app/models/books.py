@@ -61,14 +61,6 @@ class Book(Base):
     def __repr__(self):
         return f'[{self.id}] {self.title} - {self.authors}'
 
-    def add_tag(self, tag: "Tag") -> None:
-        if tag not in self.tags:
-            self.tags.append(tag)
-
-    def remove_tag(self, tag: "Tag") -> None:
-        if tag in self.tags:
-            self.tags.remove(tag)
-
 
 class Tag(Base):
     __tablename__ = 'tags'
@@ -78,6 +70,7 @@ class Tag(Base):
 
     books: Mapped[list["Book"]] = relationship(secondary="books_tags", back_populates="tags")
 
+    # TODO remove
     @classmethod
     def get_or_create(cls, session, name: str) -> "Tag":
         tag = session.query(cls).filter_by(name=name).first()

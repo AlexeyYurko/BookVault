@@ -26,7 +26,7 @@
             </a>
         </p>
         <!-- Include other book fields -->
-        <p><strong>Series:</strong> {% if book.series %} {{ book.series[0].name }} {% else %} None {% endif %}</p>
+        <p><strong>Series:</strong> {% if book.series %} {{ book.series.name }} {% else %} None {% endif %}</p>
         <p><strong>Collection:</strong> {% if book.collection %} {{ book.collection[0].name }} {% else %}
             None {% endif %}</p>
         <p><strong>Format:</strong> {{ book.format }}</p>
