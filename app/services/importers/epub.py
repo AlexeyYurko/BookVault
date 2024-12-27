@@ -7,12 +7,12 @@ from tempfile import NamedTemporaryFile
 from ebooklib import epub
 from PIL import Image
 
-from config import IMAGES_PATH
-from importers.base import (
+from app.config import IMAGES_PATH
+from app.services.importers.base import (
     BookImporter,
     BookMetadata,
 )
-from importers.exceptions import ImportBookException
+from app.services.importers.exceptions import ImportBookException
 
 
 class EpubImporter(BookImporter):

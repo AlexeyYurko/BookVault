@@ -4,11 +4,11 @@ from sqlalchemy import (
     select,
 )
 
-from db import (
+from app.db import (
     Session,
     get_db_session,
 )
-from models import (
+from app.models import (
     Book,
     Tag,
 )

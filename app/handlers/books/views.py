@@ -11,21 +11,21 @@ from starlette import status
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 
-from db import (
+from app.db import (
     Session,
     get_db_session,
 )
-from handlers.books.dependencies import (
+from app.handlers.books.dependencies import (
     get_book_by_id,
     get_book_by_tag,
     get_searched_books,
 )
-from importers import (
+from app.services.importers import (
     DjvuImporter,
     EpubImporter,
     PdfImporter,
 )
-from models import (
+from app.models import (
     Book,
     Tag,
 )
