@@ -8,7 +8,6 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.db.base import engine
-from app.services.importers.exceptions import ImportBookException
 from app.models import (
     Book,
     Tag,
@@ -16,8 +15,11 @@ from app.models import (
 from app.models.author import Author
 from app.models.language import Language
 from app.models.publishers import Publisher
+from app.repositories.uow import UnitOfWork
+from app.services.importers.exceptions import ImportBookException
 
 escaping_table = str.maketrans({'#': 'sharp'})
+
 
 @dataclass
 class BookMetadata:
@@ -76,7 +78,8 @@ class BookImporter:
                 if author_name in [None, '']:
                     continue
                 cleaned_author_name = author_name.strip()
-                author = session.query(Author).filter(Author.name == cleaned_author_name).first() or Author(name=cleaned_author_name)
+                author = session.query(Author).filter(Author.name == cleaned_author_name).first() or Author(
+                    name=cleaned_author_name)
                 db_authors.append(author)
         return db_authors
 
@@ -86,7 +89,8 @@ class BookImporter:
             return None
         with Session(bind=engine) as session:
             publisher = publisher.strip()
-            db_publisher = session.query(Publisher).filter(Publisher.name == publisher).first() or Publisher(name=publisher)
+            db_publisher = session.query(Publisher).filter(Publisher.name == publisher).first() or Publisher(
+                name=publisher)
         return db_publisher
 
     def process(self):
@@ -100,22 +104,29 @@ class BookImporter:
 
         checksum = self._calculate_checksum()
         with Session(bind=engine) as session:
-            book = session.query(Book).filter(Book.checksum == checksum).first()
-            if book:
-                # TODO return something like Book Exists
-                return
-            # TODO add support for different languages
-            language = session.query(Language).filter(Language.code == 'en').first()
-            book = Book(
-                title=book_metadata.title,
-                authors=self._process_authors(book_metadata.authors),
-                checksum=checksum,
-                format=self.FORMAT,
-                cover=self.extract_cover(),
-                tags=self._process_tags(),
-                language=language,
-                publisher=self._process_publisher(book_metadata.publisher),
-                description=book_metadata.description
-            )
-            session.add(book)
-            session.commit()
+            uow = UnitOfWork(session)
+            with uow.transaction():
+                book = session.query(Book).filter(Book.checksum == checksum).first()
+                if book:
+                    # TODO return something like Book Exists
+                    return
+                # TODO add support for different languages
+                language = session.query(Language).filter(Language.code == 'en').first()
+
+                authors = self._process_authors(book_metadata.authors)
+                publisher = self._process_publisher(book_metadata.publisher)
+                cover = self.extract_cover()
+                tags = self._process_tags()
+
+                uow.book_repo.create(
+                    title=book_metadata.title,
+                    authors=authors,
+                    checksum=checksum,
+                    format=self.FORMAT,
+                    cover=cover,
+                    tags=tags,
+                    language=language,
+                    publisher=publisher,
+                    description=book_metadata.description
+                )
+                session.commit()
