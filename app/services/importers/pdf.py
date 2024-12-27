@@ -4,7 +4,7 @@ from pathlib import Path
 import pypdfium2 as pdfium
 from PyPDF2 import PdfReader
 
-from app.config import IMAGES_PATH
+from app.config import settings
 from app.services.importers.base import (
     BookImporter,
     BookMetadata,
@@ -29,8 +29,8 @@ class PdfImporter(BookImporter):
         filename = self._cover_filename
         pdf = self._read_pdf_file('pdfium')
         page = pdf.get_page(0)
-        cover = page.render_topil(scale=2, optimise_mode=pdfium.OptimiseMode.NONE)
-        path = Path(IMAGES_PATH, filename)
+        cover = page.render(scale = 300/72, optimize_mode=None).to_pil()
+        path = Path(settings.static_path, settings.cover_images_path, filename)
         logger.info(f"Saving {filename}, width {cover.width}, height {cover.height}")
         cover.save(str(path))
         return filename

@@ -7,7 +7,7 @@ from tempfile import NamedTemporaryFile
 from ebooklib import epub
 from PIL import Image
 
-from app.config import IMAGES_PATH
+from app.config import settings
 from app.services.importers.base import (
     BookImporter,
     BookMetadata,
@@ -80,7 +80,7 @@ class EpubImporter(BookImporter):
                 'image/png',
             ]:
                 filename = self._cover_filename
-                path = Path(IMAGES_PATH/ filename)
+                path = Path(settings.static_path, settings.cover_images_path, filename)
                 cover_image = item.get_content()
                 image = Image.open(BytesIO(cover_image))
                 if image.mode == 'RGBA':
