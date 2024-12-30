@@ -10,11 +10,8 @@ from sqlalchemy.orm import Session
 from app.db.base import engine
 from app.models import (
     Book,
-    Tag,
 )
-from app.models.author import Author
 from app.models.language import Language
-from app.models.publishers import Publisher
 from app.repositories.uow import UnitOfWork
 from app.services.importers.exceptions import ImportBookException
 
@@ -59,38 +56,33 @@ class BookImporter:
             file_hash.update(chunk)
         return file_hash.hexdigest()
 
-    def _process_tags(self):
+    def _process_tags(self, uow: UnitOfWork):
         db_tags = []
-        with Session(bind=engine) as session:
-            for tag in self.tags:
-                if not tag:
-                    continue
-                cleaned_tag = tag.translate(escaping_table)
-                db_tag = session.query(Tag).filter(Tag.name == cleaned_tag).first() or Tag(name=cleaned_tag)
-                db_tags.append(db_tag)
+        for tag in self.tags:
+            if not tag:
+                continue
+            cleaned_tag_name = tag.translate(escaping_table)
+            db_tag = uow.tag_repo.get_or_create(name=cleaned_tag_name)
+            db_tags.append(db_tag)
         return db_tags
 
     @staticmethod
-    def _process_authors(authors):
+    def _process_authors(uow: UnitOfWork, authors):
         db_authors = []
-        with Session(bind=engine) as session:
-            for author_name in authors:
-                if author_name in [None, '']:
-                    continue
-                cleaned_author_name = author_name.strip()
-                author = session.query(Author).filter(Author.name == cleaned_author_name).first() or Author(
-                    name=cleaned_author_name)
-                db_authors.append(author)
+        for author_name in authors:
+            if author_name in [None, '']:
+                continue
+            cleaned_author_name = author_name.strip()
+            author = uow.author_repo.get_or_create(name=cleaned_author_name)
+            db_authors.append(author)
         return db_authors
 
     @staticmethod
-    def _process_publisher(publisher):
-        if not publisher:
+    def _process_publisher(uow: UnitOfWork, publisher_name):
+        if not publisher_name:
             return None
-        with Session(bind=engine) as session:
-            publisher = publisher.strip()
-            db_publisher = session.query(Publisher).filter(Publisher.name == publisher).first() or Publisher(
-                name=publisher)
+        publisher_name = publisher_name.strip()
+        db_publisher = uow.publisher_repo.get_or_create(name=publisher_name)
         return db_publisher
 
     def process(self):
@@ -113,10 +105,10 @@ class BookImporter:
                 # TODO add support for different languages
                 language = session.query(Language).filter(Language.code == 'en').first()
 
-                authors = self._process_authors(book_metadata.authors)
-                publisher = self._process_publisher(book_metadata.publisher)
+                authors = self._process_authors(uow, book_metadata.authors)
+                publisher = self._process_publisher(uow, book_metadata.publisher)
                 cover = self.extract_cover()
-                tags = self._process_tags()
+                tags = self._process_tags(uow)
 
                 uow.book_repo.create(
                     title=book_metadata.title,
