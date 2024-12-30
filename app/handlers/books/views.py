@@ -85,7 +85,7 @@ def add_tag(request: Request, book_id: int, tag_name: str = Form(...), uow=Depen
         if not book:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
 
-        tag = uow.tag_repo.get_or_create(tag_name)
+        tag = uow.tag_repo.get_or_create(name=tag_name)
         uow.book_repo.add_tag(book, tag)
 
     return templates.TemplateResponse("tags.html", {"request": request, "book": book})
@@ -124,6 +124,6 @@ def batch_action(
             for book_id in book_ids:
                 book = uow.book_repo.get_book_by_id(book_id)
                 if book:
-                    book.tags = [uow.tag_repo.get_or_create(tag_name) for tag_name in new_tags]
+                    book.tags = [uow.tag_repo.get_or_create(name=tag_name) for tag_name in new_tags]
 
     return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)

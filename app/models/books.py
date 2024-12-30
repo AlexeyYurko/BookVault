@@ -70,16 +70,6 @@ class Tag(Base):
 
     books: Mapped[list["Book"]] = relationship(secondary="books_tags", back_populates="tags")
 
-    # TODO remove
-    @classmethod
-    def get_or_create(cls, session, name: str) -> "Tag":
-        tag = session.query(cls).filter_by(name=name).first()
-        if not tag:
-            tag = cls(name=name)
-            session.add(tag)
-            session.flush()
-        return tag
-
     def __repr__(self):
         return f'Tag(id={self.id}, name="{self.name}")'
 

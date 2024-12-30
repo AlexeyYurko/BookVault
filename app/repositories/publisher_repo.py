@@ -1,5 +1,5 @@
 from app.repositories.base import AbstractRepository
 
 
-class TagRepository(AbstractRepository):
+class PublisherRepository(AbstractRepository):
     ...

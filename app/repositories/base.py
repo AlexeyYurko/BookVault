@@ -19,7 +19,15 @@ class AbstractRepository(ABC, Generic[T]):
     def get_by_params(self, **kwargs) -> T | None:
         query = select(self.model).filter_by(**kwargs)
         result = self.session.execute(query)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     def add(self, entity):
         self.session.add(entity)
+
+    def get_or_create(self, **kwargs) -> T | None:
+        obj = self.get_by_params(**kwargs)
+        if not obj:
+            obj = self.create(**kwargs)
+            self.session.add(obj)
+            self.session.flush()
+        return obj
