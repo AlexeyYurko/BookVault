@@ -1,75 +1,272 @@
 <div class="grid gap-3 grid-cols-2 mt-4" style="grid-template-columns: 2fr 10fr;">
-    <div class="mx-2 bg-light rounded-md">
+    <div class="mx-2 bg-light rounded-md p-3">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">Tags</span>
+            <button id="clear-tags-btn"
+                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded transition-colors"
+                hx-get="{{ url_for('homepage') }}" hx-target="#books-list">
+                Clear Filters
+            </button>
+        </div>
         {% for tag in tags %}
-            <a href=""
-               class="inline-block bg-gray-300 text-black text-decoration-black py-1 px-1 rounded-lg lowercase text-xs"
-               hx-get="{{ url_for('show_books_by_tag', tag_name=tag.name) }}" hx-target="#books-list">{{ tag.name }}</a>
+        <a href=""
+            class="inline-block bg-gray-300 hover:bg-gray-400 text-black text-decoration-black py-1 px-1 rounded-lg lowercase text-xs mr-1 mb-1 transition-colors tag-filter"
+            data-tag="{{ tag.name }}" data-url="{{ url_for('show_books_by_tag', tag_name=tag.name) }}">{{ tag.name
+            }}</a>
         {% endfor %}
     </div>
-    <div class="mx-2 bg-light overflow-y-auto" style="max-height: calc(100vh - 80px);">
-        <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post">
-            <div class="sticky top-0 z-10 mb-4 p-4 bg-white border-b border-gray-200 shadow-sm">
-                <div class="flex flex-wrap items-center gap-2">
-                    <select name="action" id="action-select"
-                            class="form-select px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="update_tags">Update Tags</option>
-                        <option value="delete">Delete</option>
-                    </select>
-                    <input type="text" name="tags" placeholder="New tags (comma-separated)"
-                           class="form-input px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <button type="submit"
-                            class="btn btn-primary bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">
-                        Apply
-                    </button>
+
+    <div class="mx-2 bg-light rounded-md flex flex-col" style="height: calc(100vh - 120px);">
+        <!-- Fixed header outside of scroll container -->
+        <div class="flex-shrink-0">
+            <!-- Active filter indicator -->
+            <div id="active-filter" class="hidden px-4 py-2 bg-blue-50 border-b border-blue-200">
+                <div class="flex items-center justify-between">
+                    <span id="filter-text" class="text-sm text-blue-800"></span>
+                    <button type="button" class="text-blue-600 hover:text-blue-800 font-bold"
+                        hx-get="{{ url_for('homepage') }}" hx-target="#books-list">×</button>
                 </div>
             </div>
-            {% for book in books %}
-                <div class="flex items-center justify-between py-2 px-3 border-b border-gray-300 hover:bg-gray-50">
-                    <div class="flex items-center space-x-3 w-full">
+
+            <!-- Table header -->
+            <div
+                class="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 text-sm font-medium text-gray-700 border-b border-gray-200">
+                <div class="col-span-1">
+                    <input type="checkbox" id="select-all" class="form-checkbox h-4 w-4 text-blue-600">
+                </div>
+                <div class="col-span-1"></div>
+                <div class="col-span-3">Title & Author</div>
+                <div class="col-span-2">Publisher</div>
+                <div class="col-span-1">Language</div>
+                <div class="col-span-2">Added</div>
+                <div class="col-span-2">Tags</div>
+            </div>
+        </div>
+
+        <!-- Scrollable content -->
+        <div class="flex-1 overflow-y-auto">
+            <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post">
+                {% for book in books %}
+                <div
+                    class="grid grid-cols-12 gap-2 items-center py-2 px-3 border-b border-gray-200 hover:bg-gray-50 text-sm">
+                    <!-- Checkbox -->
+                    <div class="col-span-1">
                         <input type="checkbox" name="book_ids" value="{{ book.id }}"
-                               class="form-checkbox h-5 w-5 text-blue-600">
-                        <a href="{{ url_for('show_book', book_id=book.id) }}"
-                           class="text-blue-600 flex items-center flex-grow">
-                            {% if book.cover %}
-                                <div class="thumbnail_container flex-shrink-0">
-                                    <img class="book_list_thumbnail object-cover h-16 w-12 mr-3"
-                                         src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="">
-                                </div>
-                            {% endif %}
-                            <div class="flex flex-col">
-                                <span class="text-gray-900 font-medium">{{ book.title }}</span>
-                                {% if book.authors %}
-                                    <span class="text-gray-600 text-sm">{{ book.authors|join(', ', attribute='name') }}</span>
-                                {% endif %}
-                                {% if book.tags %}
-                                    <div class="mt-1">
-                                        {% for tag in book.tags %}
-                                            <span
-                                                    class="inline-block bg-gray-200 rounded-full px-1 py-0.5 text-[0.5em] leading-none font-medium text-gray-700 mr-0.5 mb-0.5">
-                                    {{ tag.name }}
-                                </span>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                            class="form-checkbox h-4 w-4 text-blue-600 book-checkbox">
+                    </div>
+
+                    <!-- Cover -->
+                    <div class="col-span-1">
+                        {% if book.cover %}
+                        <div class="thumbnail_container">
+                            <img class="book_list_thumbnail object-cover h-12 w-8"
+                                src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Title & Author -->
+                    <div class="col-span-3">
+                        <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-blue-600 hover:text-blue-800">
+                            <div class="font-medium text-gray-900">{{ book.title }}</div>
+                            {% if book.authors %}
+                            <div class="text-gray-600 text-xs mt-0.5">{{ book.authors|join(', ', attribute='name') }}
                             </div>
+                            {% endif %}
                         </a>
                     </div>
+
+                    <!-- Publisher -->
+                    <div class="col-span-2 text-gray-700 text-xs">
+                        {% if book.publisher %}
+                        {{ book.publisher.name }}
+                        {% else %}
+                        <span class="text-gray-400">Unknown</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Language -->
+                    <div class="col-span-1 text-gray-700">
+                        {% if book.language %}
+                        <span class="inline-block bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs">{{
+                            book.language.name }}</span>
+                        {% else %}
+                        <span class="text-gray-400 text-xs">{{ book.language_code or 'Unknown' }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Added Date -->
+                    <div class="col-span-2 text-gray-600 text-xs">
+                        {{ book.added_at.strftime('%Y-%m-%d') if book.added_at else 'Unknown' }}
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="col-span-2">
+                        {% if book.tags %}
+                        <div class="flex flex-wrap gap-0.5">
+                            {% for tag in book.tags[:3]|sort(attribute='name') %}
+                            <a href="" data-tag="{{ tag.name }}"
+                                data-url="{{ url_for('show_books_by_tag', tag_name=tag.name) }}"
+                                class="inline-block bg-gray-200 hover:bg-gray-300 rounded px-1 py-0.5 text-[0.6em] leading-none font-medium text-gray-700 cursor-pointer transition-colors tag-filter">
+                                {{ tag.name }}
+                            </a>
+                            {% endfor %}
+                            {% if book.tags|length > 3 %}
+                            <span class="text-gray-500 text-xs">+{{ book.tags|length - 3 }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
-            {% endfor %}
-        </form>
+                {% endfor %}
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
-    document.getElementById('batch-action-form').addEventListener('submit', function (e) {
-        const action = document.getElementById('action-select').value;
-        const selectedBooks = document.querySelectorAll('input[name="book_ids"]:checked');
+    // Track current active filter
+    let currentFilter = null;
 
-        if (action === 'delete' && selectedBooks.length > 0) {
+    // Batch operations functionality
+    function updateBatchOperations() {
+        const selectedBoxes = document.querySelectorAll('.book-checkbox:checked');
+        const batchOps = document.getElementById('batch-operations');
+        const selectedCount = document.getElementById('selected-count');
+
+        if (selectedBoxes.length > 0) {
+            batchOps.classList.remove('hidden');
+            selectedCount.textContent = selectedBoxes.length;
+        } else {
+            batchOps.classList.add('hidden');
+        }
+    }
+
+    // Select all functionality
+    document.getElementById('select-all').addEventListener('change', function () {
+        const checkboxes = document.querySelectorAll('.book-checkbox');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        updateBatchOperations();
+    });
+
+    // Individual checkbox changes
+    document.addEventListener('change', function (e) {
+        if (e.target.classList.contains('book-checkbox')) {
+            updateBatchOperations();
+
+            // Update select-all state
+            const total = document.querySelectorAll('.book-checkbox').length;
+            const checked = document.querySelectorAll('.book-checkbox:checked').length;
+            const selectAll = document.getElementById('select-all');
+
+            if (checked === 0) {
+                selectAll.indeterminate = false;
+                selectAll.checked = false;
+            } else if (checked === total) {
+                selectAll.indeterminate = false;
+                selectAll.checked = true;
+            } else {
+                selectAll.indeterminate = true;
+            }
+        }
+    });
+
+    // Apply batch action
+    document.getElementById('apply-batch-btn').addEventListener('click', function () {
+        const action = document.getElementById('action-select').value;
+        const selectedBoxes = document.querySelectorAll('.book-checkbox:checked');
+        const tags = document.getElementById('tags-input').value;
+
+        if (action === 'delete' && selectedBoxes.length > 0) {
+            const confirmMessage = `Are you sure you want to delete ${selectedBoxes.length} book(s)?`;
+            if (!confirm(confirmMessage)) return;
+        }
+
+        // Create form data
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('tags', tags);
+        selectedBoxes.forEach(cb => formData.append('book_ids', cb.value));
+
+        // Submit via fetch
+        fetch('{{ url_for("batch_action") }}', {
+            method: 'POST',
+            body: formData
+        }).then(() => {
+            window.location.reload();
+        });
+    });
+
+    // Cancel batch action
+    document.getElementById('cancel-batch-btn').addEventListener('click', function () {
+        document.querySelectorAll('.book-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        updateBatchOperations();
+    });
+
+    // Handle tag filtering with toggle functionality
+    document.addEventListener('click', function (e) {
+        const tagLink = e.target.closest('.tag-filter');
+        if (tagLink) {
             e.preventDefault();
-            const confirmMessage = `Are you sure you want to delete ${selectedBooks.length} book(s)?`;
-            if (confirm(confirmMessage)) {
-                this.submit();
+            e.stopPropagation();
+
+            const tagName = tagLink.getAttribute('data-tag');
+            const tagUrl = tagLink.getAttribute('data-url');
+
+            // If clicking the same tag that's already active, clear filter
+            if (currentFilter === tagName) {
+                currentFilter = null;
+                htmx.ajax('GET', '{{ url_for("homepage") }}', { target: '#books-list' });
+                hideActiveFilter();
+            } else {
+                currentFilter = tagName;
+                htmx.ajax('GET', tagUrl, { target: '#books-list' });
+                showActiveFilter(tagName);
+            }
+
+            updateTagStates();
+        }
+    });
+
+    function showActiveFilter(tagName) {
+        const activeFilter = document.getElementById('active-filter');
+        const filterText = document.getElementById('filter-text');
+        filterText.textContent = `Filtered by: ${tagName}`;
+        activeFilter.classList.remove('hidden');
+    }
+
+    function hideActiveFilter() {
+        const activeFilter = document.getElementById('active-filter');
+        activeFilter.classList.add('hidden');
+    }
+
+    function updateTagStates() {
+        // Update visual state of tags
+        document.querySelectorAll('.tag-filter').forEach(tag => {
+            const tagName = tag.getAttribute('data-tag');
+            if (currentFilter === tagName) {
+                tag.classList.remove('bg-gray-200', 'bg-gray-300', 'hover:bg-gray-300');
+                tag.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+            } else {
+                tag.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                tag.classList.add('bg-gray-200', 'hover:bg-gray-300');
+            }
+        });
+    }
+
+    // Clear filter when page loads if no filter is active
+    document.addEventListener('DOMContentLoaded', function () {
+        // Check if we're on a filtered page by looking at URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const pathSegments = window.location.pathname.split('/');
+
+        if (pathSegments.includes('by_tag')) {
+            const tagName = pathSegments[pathSegments.indexOf('by_tag') + 1];
+            if (tagName) {
+                currentFilter = decodeURIComponent(tagName);
+                showActiveFilter(currentFilter);
+                updateTagStates();
             }
         }
     });

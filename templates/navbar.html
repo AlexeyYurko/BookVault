@@ -3,18 +3,40 @@
         <a href="{{ url_for('homepage') }}" class="flex items-center">
             <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">BookVault</span>
         </a>
+
+        <!-- Batch Operations - Hidden by default -->
+        <div id="batch-operations" class="hidden flex items-center gap-2">
+            <span class="text-sm text-gray-600">Selected: <span id="selected-count">0</span></span>
+            <select name="action" id="action-select"
+                class="px-2 py-1 text-sm rounded border border-gray-300 bg-white text-gray-700">
+                <option value="update_tags">Update Tags</option>
+                <option value="delete">Delete</option>
+            </select>
+            <input type="text" name="tags" id="tags-input" placeholder="Tags (comma-separated)"
+                class="px-2 py-1 text-sm rounded border border-gray-300 w-40">
+            <button type="button" id="apply-batch-btn"
+                class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-1 px-3 rounded transition duration-300">
+                Apply
+            </button>
+            <button type="button" id="cancel-batch-btn"
+                class="bg-gray-500 hover:bg-gray-600 text-white text-sm font-bold py-1 px-2 rounded transition duration-300">
+                Cancel
+            </button>
+        </div>
+
         <div class="flex items-center">
             <div class="relative">
                 <form hx-post="{{ url_for('search_books') }}" hx-trigger="submit" hx-target="#books-list">
                     <input type="text" id="search-navbar"
-                           class="block w-full p-2 pl-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                           name="query" placeholder="Search...">
+                        class="block w-full p-2 pl-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        name="query" placeholder="Search...">
                 </form>
             </div>
-            <ul class="flex flex-col p-4 md:p-0 mt-4 font-medium border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
+            <ul
+                class="flex flex-col p-4 md:p-0 mt-4 font-medium border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
                 <li>
                     <a href="{{ url_for('show_add_books_view') }}"
-                       class="block py-2 pl-3 pr-4 ml-2 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Add</a>
+                        class="block py-2 pl-3 pr-4 ml-2 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Add</a>
                 </li>
             </ul>
         </div>
