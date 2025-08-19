@@ -37,7 +37,8 @@ def search_books(request: Request, query: str = Form(default=''), uow=Depends(ge
     books = uow.book_repo.get_searched_books(query)
     for book in books:
         tags.extend(iter(book.tags))
-    return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': set(tags)})
+    tags = sorted(set(tags), key=lambda tag: tag.name)
+    return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': tags})
 
 
 @router.get('/add_books')
@@ -75,7 +76,8 @@ def show_books_by_tag(request: Request, tag_name: str, uow=Depends(get_uow)):
     tags = []
     for book in books:
         tags.extend(iter(book.tags))
-    return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': set(tags)})
+    tags = sorted(set(tags), key=lambda tag: tag.name)
+    return templates.TemplateResponse('books_list.html', {'request': request, 'books': books, 'tags': tags})
 
 
 @router.post("/books/{book_id}/tags")
@@ -109,11 +111,11 @@ def remove_tag(request: Request, book_id: int, tag_id: int, uow=Depends(get_uow)
 
 @router.post("/batch_action")
 def batch_action(
-        request: Request,
-        action: str = Form(...),
-        book_ids: list[int] = Form(...),
-        tags: str = Form(default=''),
-        uow=Depends(get_uow),
+    request: Request,
+    action: str = Form(...),
+    book_ids: list[int] = Form(...),
+    tags: str = Form(default=''),
+    uow=Depends(get_uow),
 ):
     if action == "delete":
         with uow.transaction():
@@ -124,6 +126,9 @@ def batch_action(
             for book_id in book_ids:
                 book = uow.book_repo.get_book_by_id(book_id)
                 if book:
-                    book.tags = [uow.tag_repo.get_or_create(name=tag_name) for tag_name in new_tags]
+                    new_tag_objects = {uow.tag_repo.get_or_create(name=tag_name) for tag_name in new_tags}
+                    existing_tags = set(book.tags)
+                    merged_tags = existing_tags.union(new_tag_objects)
+                    book.tags = list(merged_tags)
 
     return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)
