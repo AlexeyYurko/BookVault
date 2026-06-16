@@ -14,6 +14,6 @@ class Publisher(Base):
     __tablename__ = 'publishers'
 
     id: Mapped[int_pk]
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
     books: Mapped[list["Book"]] = relationship(backref="publisher")

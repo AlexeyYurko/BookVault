@@ -14,7 +14,7 @@ class Author(Base):
     __tablename__ = 'authors'
 
     id: Mapped[int_pk]
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
     books: Mapped[list[Book]] = relationship(secondary="books_authors", back_populates="authors", lazy='joined')
 
