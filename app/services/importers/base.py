@@ -5,14 +5,9 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
-from app.db.base import engine
-from app.models import (
-    Book,
-)
+from app.models import Book
 from app.models.language import Language
-from app.repositories.uow import UnitOfWork
+from app.repositories.data_store import DataStore
 from app.services.importers.exceptions import ImportBookException
 
 escaping_table = str.maketrans({'#': 'sharp'})
@@ -56,36 +51,36 @@ class BookImporter:
             file_hash.update(chunk)
         return file_hash.hexdigest()
 
-    def _process_tags(self, uow: UnitOfWork):
+    def _process_tags(self, store: DataStore):
         db_tags = []
         for tag in self.tags:
             if not tag:
                 continue
             cleaned_tag_name = tag.translate(escaping_table)
-            db_tag = uow.tag_repo.get_or_create(name=cleaned_tag_name)
+            db_tag = store.tag_repo.get_or_create(name=cleaned_tag_name)
             db_tags.append(db_tag)
         return db_tags
 
     @staticmethod
-    def _process_authors(uow: UnitOfWork, authors):
+    def _process_authors(store: DataStore, authors):
         db_authors = []
         for author_name in authors:
             if author_name in [None, '']:
                 continue
             cleaned_author_name = author_name.strip()
-            author = uow.author_repo.get_or_create(name=cleaned_author_name)
+            author = store.author_repo.get_or_create(name=cleaned_author_name)
             db_authors.append(author)
         return db_authors
 
     @staticmethod
-    def _process_publisher(uow: UnitOfWork, publisher_name):
+    def _process_publisher(store: DataStore, publisher_name):
         if not publisher_name:
             return None
         publisher_name = publisher_name.strip()
-        db_publisher = uow.publisher_repo.get_or_create(name=publisher_name)
+        db_publisher = store.publisher_repo.get_or_create(name=publisher_name)
         return db_publisher
 
-    def process(self):
+    def process(self, store: DataStore):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
         try:
@@ -95,30 +90,25 @@ class BookImporter:
             return
 
         checksum = self._calculate_checksum()
-        with Session(bind=engine) as session:
-            uow = UnitOfWork(session)
-            with uow.transaction():
-                book = session.query(Book).filter(Book.checksum == checksum).first()
-                if book:
-                    # TODO return something like Book Exists
-                    return
-                # TODO add support for different languages
-                language = session.query(Language).filter(Language.code == 'en').first()
+        book = store.session.query(Book).filter(Book.checksum == checksum).first()
+        if book:
+            return
 
-                authors = self._process_authors(uow, book_metadata.authors)
-                publisher = self._process_publisher(uow, book_metadata.publisher)
-                cover = self.extract_cover()
-                tags = self._process_tags(uow)
+        language = store.session.query(Language).filter(Language.code == 'en').first()
 
-                uow.book_repo.create(
-                    title=book_metadata.title,
-                    authors=authors,
-                    checksum=checksum,
-                    format=self.FORMAT,
-                    cover=cover,
-                    tags=tags,
-                    language=language,
-                    publisher=publisher,
-                    description=book_metadata.description
-                )
-                session.commit()
+        authors = self._process_authors(store, book_metadata.authors)
+        publisher = self._process_publisher(store, book_metadata.publisher)
+        cover = self.extract_cover()
+        tags = self._process_tags(store)
+
+        store.book_repo.create(
+            title=book_metadata.title,
+            authors=authors,
+            checksum=checksum,
+            format=self.FORMAT,
+            cover=cover,
+            tags=tags,
+            language=language,
+            publisher=publisher,
+            description=book_metadata.description,
+        )

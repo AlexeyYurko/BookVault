@@ -10,7 +10,7 @@ from app.repositories.publisher_repo import PublisherRepository
 from app.repositories.tag_repository import TagRepository
 
 
-class UnitOfWork:
+class DataStore:
     def __init__(self, session):
         self._session = session
         self.book_repo = BookRepository(session, Book)

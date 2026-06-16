@@ -61,3 +61,4 @@ class BookRepository(AbstractRepository):
 
     def delete_books(self, book_ids: list[int]) -> None:
         self.session.query(Book).filter(Book.id.in_(book_ids)).delete(synchronize_session=False)
+        self.session.expire_all()

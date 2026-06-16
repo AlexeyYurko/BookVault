@@ -6,12 +6,12 @@ authors = [
     { name = "Alexey Yurko", email = "a.yurko@gmail.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "ruff",
     "isort>=5.13.2",
     "fastapi>=0.115.0",
-    "sqlalchemy[asyncio]>=2.0.35",
+    "sqlalchemy>=2.0.35",
     "ebooklib>=0.18",
     "pillow>=10.4.0",
     "uvicorn>=0.31.0",

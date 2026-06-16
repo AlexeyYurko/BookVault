@@ -7,7 +7,7 @@ from sqlalchemy.orm import (
 
 from app.db.annotations import str_pk
 from app.db.base import Base
-from app.models import Book
+from app.models.books import Book
 
 
 class Language(Base):

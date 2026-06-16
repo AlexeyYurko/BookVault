@@ -1,5 +1,7 @@
 import contextlib
 import logging
+import os
+import shutil
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -104,9 +106,8 @@ class EpubImporter(BookImporter):
 
     def _get_temp_ebook(self):
         with NamedTemporaryFile(delete=False) as temp_file:
-            while True:
-                chunk = self.file.file.read(1024)
-                if not chunk:
-                    break
-                temp_file.write(chunk)
-        return epub.read_epub(temp_file.name)
+            shutil.copyfileobj(self.file.file, temp_file)
+            temp_path = temp_file.name
+        book = epub.read_epub(temp_path)
+        os.unlink(temp_path)
+        return book
