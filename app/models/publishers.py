@@ -7,6 +7,7 @@ from sqlalchemy.orm import (
 
 from app.db.annotations import int_pk
 from app.db.base import Base
+from app.models.books import Book
 
 
 class Publisher(Base):

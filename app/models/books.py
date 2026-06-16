@@ -41,16 +41,16 @@ class Book(Base):
     edition: Mapped[str] = mapped_column(String, nullable=True)
 
     series_id: Mapped[int] = mapped_column(ForeignKey("book_series.id", name="book_series_fk"), nullable=True)
-    series: Mapped[list["BookSeries"]] = relationship(backref="books")
+    series: Mapped["BookSeries | None"] = relationship(backref="books")
 
     collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", name="book_collections_fk"), nullable=True)
-    collection: Mapped[list["Collection"]] = relationship(backref="books")
+    collection: Mapped["Collection | None"] = relationship(backref="books")
 
     checksum: Mapped[str] = mapped_column(String, nullable=True)
     format: Mapped[str] = mapped_column(String, nullable=True)
 
     tags: Mapped[list["Tag"]] = relationship(secondary="books_tags", back_populates="books")
-    authors: Mapped[list["Author"]] = relationship(secondary="books_authors", back_populates="books")
+    authors: Mapped[list["Author"]] = relationship(secondary="books_authors", back_populates="books")  # noqa: F821
 
     publisher_id: Mapped[int] = mapped_column(ForeignKey("publishers.id", name="book_publishers_fk"), nullable=True)
 

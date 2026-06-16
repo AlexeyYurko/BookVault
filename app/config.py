@@ -29,6 +29,7 @@ class Environment(enum.StrEnum):
 
 
 class Settings(BaseSettings):
+    environment: Environment = Environment.local
     temp_dir: str = 'tmp'
     cover_images_path: str = 'cover_images'
     static_path: str = 'static'

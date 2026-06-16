@@ -1,12 +1,11 @@
-from abc import ABC
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from sqlalchemy import select
 
 T = TypeVar('T')
 
 
-class AbstractRepository(ABC, Generic[T]):
+class AbstractRepository[T]:
     def __init__(self, session, model):
         self.session = session
         self.model = model
