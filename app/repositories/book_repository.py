@@ -1,7 +1,9 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
-from app.models import Book, Tag
+from app.models import Book, BookSeries, Collection, Tag
+from app.models.author import Author
+from app.models.publishers import Publisher
 from app.repositories.base import AbstractRepository
 
 
@@ -17,11 +19,24 @@ class BookRepository(AbstractRepository):
         return self.session.scalars(tags_query).all()
 
     def get_searched_books(self, query: str) -> list[Book]:
+        pattern = f"%{query}%"
         return (
             self.session
             .scalars(
                 select(Book)
-                .where(Book.title.ilike(f"%{query}%"))
+                .where(
+                    or_(
+                        Book.title.ilike(pattern),
+                        Book.isbn.ilike(pattern),
+                        Book.description.ilike(pattern),
+                        Book.edition.ilike(pattern),
+                        Book.authors.any(Author.name.ilike(pattern)),
+                        Book.tags.any(Tag.name.ilike(pattern)),
+                        Book.publisher.has(Publisher.name.ilike(pattern)),
+                        Book.series.has(BookSeries.name.ilike(pattern)),
+                        Book.collection.has(Collection.name.ilike(pattern)),
+                    )
+                )
             ).all()
         )
 

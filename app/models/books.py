@@ -32,29 +32,29 @@ class Book(Base):
     __tablename__ = 'books'
 
     id: Mapped[int_pk]
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    isbn: Mapped[str] = mapped_column(String, nullable=True)
+    title: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    isbn: Mapped[str] = mapped_column(String, nullable=True, index=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
     cover: Mapped[str] = mapped_column(String, nullable=True)
     amazon_url: Mapped[str] = mapped_column(String, nullable=True)
     goodreads_url: Mapped[str] = mapped_column(String, nullable=True)
     edition: Mapped[str] = mapped_column(String, nullable=True)
 
-    series_id: Mapped[int] = mapped_column(ForeignKey("book_series.id", name="book_series_fk"), nullable=True)
+    series_id: Mapped[int] = mapped_column(ForeignKey("book_series.id", name="book_series_fk"), nullable=True, index=True)
     series: Mapped["BookSeries | None"] = relationship(backref="books")
 
-    collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", name="book_collections_fk"), nullable=True)
+    collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", name="book_collections_fk"), nullable=True, index=True)
     collection: Mapped["Collection | None"] = relationship(backref="books")
 
-    checksum: Mapped[str] = mapped_column(String, nullable=True)
+    checksum: Mapped[str] = mapped_column(String, nullable=True, index=True)
     format: Mapped[str] = mapped_column(String, nullable=True)
 
     tags: Mapped[list["Tag"]] = relationship(secondary="books_tags", back_populates="books")
     authors: Mapped[list["Author"]] = relationship(secondary="books_authors", back_populates="books")  # noqa: F821
 
-    publisher_id: Mapped[int] = mapped_column(ForeignKey("publishers.id", name="book_publishers_fk"), nullable=True)
+    publisher_id: Mapped[int] = mapped_column(ForeignKey("publishers.id", name="book_publishers_fk"), nullable=True, index=True)
 
-    language_code: Mapped[str] = mapped_column(ForeignKey('languages.code'), nullable=False)
+    language_code: Mapped[str] = mapped_column(ForeignKey('languages.code'), nullable=False, index=True)
 
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -66,7 +66,7 @@ class Tag(Base):
     __tablename__ = 'tags'
 
     id: Mapped[int_pk]
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
     books: Mapped[list["Book"]] = relationship(secondary="books_tags", back_populates="tags")
 
@@ -78,11 +78,11 @@ class BookSeries(Base):
     __tablename__ = 'book_series'
 
     id: Mapped[int_pk]
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
 
 class Collection(Base):
     __tablename__ = 'collections'
 
     id: Mapped[int_pk]
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)

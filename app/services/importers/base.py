@@ -94,7 +94,11 @@ class BookImporter:
         if book:
             return
 
-        language = store.session.query(Language).filter(Language.code == 'en').first()
+        lang_code = (book_metadata.languages or ['en'])[0]
+        language = store.session.query(Language).filter(Language.code == lang_code).first()
+        if not language:
+            language = Language(code=lang_code, name=lang_code)
+            store.session.add(language)
 
         authors = self._process_authors(store, book_metadata.authors)
         publisher = self._process_publisher(store, book_metadata.publisher)

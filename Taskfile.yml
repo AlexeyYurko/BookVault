@@ -1,0 +1,33 @@
+version: "3"
+
+env:
+  VENV: .venv/bin
+
+tasks:
+  migration:
+    desc: Database migrations
+    summary: |
+      Manage Alembic database migrations.
+
+      Usage:
+        task migration:run       Apply all pending migrations
+        task migration:+1        Upgrade one revision
+        task migration:-1        Downgrade one revision
+
+    cmds:
+      - task: migration:run
+
+  migration:run:
+    desc: Apply all pending migrations
+    cmds:
+      - "{{.VENV}}/alembic upgrade head"
+
+  "migration:+1":
+    desc: Upgrade one revision
+    cmds:
+      - "{{.VENV}}/alembic upgrade +1"
+
+  "migration:-1":
+    desc: Downgrade one revision
+    cmds:
+      - "{{.VENV}}/alembic downgrade -1"
