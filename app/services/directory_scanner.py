@@ -26,21 +26,28 @@ class DirectoryScanner:
         seen: set[Path] = set()
 
         for path in root.rglob('*'):
+            # cheap extension check first - filters most of the tree (no syscall)
+            if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                continue
+
+            # skip files inside hidden directories (prefixed with .)
+            if any(part.startswith('.') for part in path.relative_to(root).parts[:-1]):
+                continue
+
+            # stat only for candidates that passed cheap checks
+            if not path.is_file():
+                continue
+
+            # dedup via resolved path (catches symlink duplicates) - only on kept files
             try:
                 resolved = path.resolve()
             except (OSError, RuntimeError) as exc:
                 result.errors.append((path, str(exc)))
                 continue
-
             if resolved in seen:
                 continue
             seen.add(resolved)
 
-            # Skip files inside hidden directories (prefixed with .)
-            if any(part.startswith('.') for part in path.relative_to(root).parts[:-1]):
-                continue
-
-            if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS:
-                result.file_paths.append(path)
+            result.file_paths.append(path)
 
         return result

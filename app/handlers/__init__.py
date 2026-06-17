@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from .books.sync import router as sync_router
 from .books.views import router as books_router
 from .database.views import router as db_router
 from .home.views import router as home_router
@@ -8,3 +9,4 @@ handlers_router = APIRouter()
 handlers_router.include_router(db_router, prefix="/db", tags=["Database"])
 handlers_router.include_router(books_router, prefix="/books", tags=["Books"])
 handlers_router.include_router(home_router, prefix="", tags=["Home"])
+handlers_router.include_router(sync_router, prefix="", tags=["Sync"])

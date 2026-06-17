@@ -16,6 +16,8 @@ from app.services.importers.base import (
 )
 from app.services.importers.exceptions import ImportBookException
 
+logger = logging.getLogger(__name__)
+
 
 class EpubImporter(BookImporter):
     FORMAT = 'epub'
@@ -26,9 +28,9 @@ class EpubImporter(BookImporter):
 
     def get_metadata(self):
         try:
-            self.book = self._get_temp_ebook()
+            self.book = self._read_ebook()
         except Exception as e:
-            logging.info('Failed to import book')
+            logger.info('Failed to import book')
             raise ImportBookException from e
 
         title = self.book.get_metadata("DC", 'title')[0][0]
@@ -104,10 +106,17 @@ class EpubImporter(BookImporter):
         authors = cleaned_authors
         return authors
 
-    def _get_temp_ebook(self):
+    def _read_ebook(self):
+        """Read EPUB — use path directly for local files, temp file for uploads."""
+        path = getattr(self.file, 'path', None)
+        if path is not None:
+            logger.info('Reading EPUB from path: %s', self.file.filename)
+            return epub.read_epub(str(path))
         with NamedTemporaryFile(delete=False) as temp_file:
             shutil.copyfileobj(self.file.file, temp_file)
             temp_path = temp_file.name
-        book = epub.read_epub(temp_path)
-        os.unlink(temp_path)
+        try:
+            book = epub.read_epub(temp_path)
+        finally:
+            os.unlink(temp_path)
         return book
