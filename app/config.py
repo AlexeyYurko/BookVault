@@ -4,10 +4,10 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
-_ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
+_ENVIRONMENT = os.environ.get("ENVIRONMENT", "local")
 
 ENV_DIR_PATH = Path(__file__).resolve().parents[1]
-env_file = ENV_DIR_PATH / '.env'
+env_file = ENV_DIR_PATH / ".env"
 
 
 class Environment(enum.StrEnum):
@@ -30,15 +30,16 @@ class Environment(enum.StrEnum):
 
 class Settings(BaseSettings):
     environment: Environment = Environment.local
-    temp_dir: str = 'tmp'
-    cover_images_path: str = 'cover_images'
-    static_path: str = 'static'
+    temp_dir: str = "tmp"
+    cover_images_path: str = "cover_images"
+    static_path: str = "static"
+    books_directory: str = ""
 
     model_config = {
-        'env_file': [ENV_DIR_PATH / '.env', ENV_DIR_PATH / f'.env.{_ENVIRONMENT}'],
-        'env_file_encoding': 'utf-8',
-        'env_nested_delimiter': '__',
-        'extra': 'ignore',
+        "env_file": [ENV_DIR_PATH / ".env", ENV_DIR_PATH / f".env.{_ENVIRONMENT}"],
+        "env_file_encoding": "utf-8",
+        "env_nested_delimiter": "__",
+        "extra": "ignore",
     }
 
 
