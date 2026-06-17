@@ -36,7 +36,7 @@ class PathImporter:
         importer_cls = EXT_TO_IMPORTER.get(ext)
         if importer_cls is None:
             raise ValueError(f'Unsupported file extension: {ext}')
-        self._importer = importer_cls(LocalFileWrapper(path=path), tags)
+        self._importer = importer_cls(LocalFileWrapper(path=path), tags, file_path=str(path))
 
     def process(self, store):
         self._importer.process(store)

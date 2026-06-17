@@ -27,9 +27,10 @@ class BookMetadata:
 class BookImporter:
     FORMAT = None
 
-    def __init__(self, file, tags):
+    def __init__(self, file, tags, file_path: str | None = None):
         self.file = file
         self.tags = tags
+        self.file_path = file_path
 
     @abstractmethod
     def extract_cover(self):
@@ -83,6 +84,7 @@ class BookImporter:
     def process(self, store: DataStore):
         logging.info("Importing book")
         logging.info("Filename: %s, tags: %s", self.file, self.tags)
+
         try:
             book_metadata = self.get_metadata()
         except ImportBookException as e:
@@ -92,6 +94,10 @@ class BookImporter:
         checksum = self._calculate_checksum()
         book = store.session.query(Book).filter(Book.checksum == checksum).first()
         if book:
+            # checksum matches but path differs - file was moved, update path
+            if self.file_path and book.file_path != self.file_path:
+                book.file_path = self.file_path
+                logging.info(f"Updated file_path for book {book.id}: {self.file_path}")
             return
 
         lang_code = (book_metadata.languages or ['en'])[0]
@@ -115,4 +121,5 @@ class BookImporter:
             language=language,
             publisher=publisher,
             description=book_metadata.description,
+            file_path=self.file_path,
         )
