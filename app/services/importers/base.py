@@ -1,6 +1,5 @@
 import hashlib
 import logging
-import os
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,7 +9,7 @@ from app.models.language import Language
 from app.repositories.data_store import DataStore
 from app.services.importers.exceptions import ImportBookException
 
-escaping_table = str.maketrans({'#': 'sharp'})
+escaping_table = str.maketrans({"#": "sharp"})
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +32,7 @@ class BookImporter:
         self.file = file
         self.tags = tags
         self.file_path = file_path
+        self._checksum: str | None = None
 
     @abstractmethod
     def extract_cover(self):
@@ -44,16 +44,18 @@ class BookImporter:
 
     @property
     def _cover_filename(self):
-        # TODO replace to unique name
-        return os.path.splitext(self.file.filename)[0].translate(escaping_table) + ".jpg"
+        return self._calculate_checksum()[:16] + ".jpg"
 
     def _calculate_checksum(self):
+        if self._checksum is not None:
+            return self._checksum
         file_hash = hashlib.blake2b()
         f = self.file.file
         f.seek(0)
         while chunk := f.read(8192):
             file_hash.update(chunk)
-        return file_hash.hexdigest()
+        self._checksum = file_hash.hexdigest()
+        return self._checksum
 
     def _process_tags(self, store: DataStore):
         db_tags = []
@@ -69,7 +71,7 @@ class BookImporter:
     def _process_authors(store: DataStore, authors):
         db_authors = []
         for author_name in authors:
-            if author_name in [None, '']:
+            if author_name in [None, ""]:
                 continue
             cleaned_author_name = author_name.strip()
             author = store.author_repo.get_or_create(name=cleaned_author_name)
@@ -91,7 +93,7 @@ class BookImporter:
         try:
             book_metadata = self.get_metadata()
         except ImportBookException as e:
-            logger.error(f'Exception while importing {self.file}, {e}')
+            logger.error(f"Exception while importing {self.file}, {e}")
             return False
 
         checksum = self._calculate_checksum()
@@ -103,7 +105,7 @@ class BookImporter:
                 logger.info(f"Updated file_path for book {book.id}: {self.file_path}")
             return False
 
-        lang_code = (book_metadata.languages or ['en'])[0]
+        lang_code = (book_metadata.languages or ["en"])[0]
         language = store.session.query(Language).filter(Language.code == lang_code).first()
         if not language:
             language = Language(code=lang_code, name=lang_code)
