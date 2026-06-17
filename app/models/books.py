@@ -56,6 +56,8 @@ class Book(Base):
 
     language_code: Mapped[str] = mapped_column(ForeignKey('languages.code'), nullable=False, index=True)
 
+    file_path: Mapped[str | None] = mapped_column(String, nullable=True)
+
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):
