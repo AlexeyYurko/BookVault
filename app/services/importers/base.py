@@ -12,6 +12,8 @@ from app.services.importers.exceptions import ImportBookException
 
 escaping_table = str.maketrans({'#': 'sharp'})
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class BookMetadata:
@@ -47,8 +49,9 @@ class BookImporter:
 
     def _calculate_checksum(self):
         file_hash = hashlib.blake2b()
-        self.file.file.seek(0)
-        while chunk := self.file.file.read(8192):
+        f = self.file.file
+        f.seek(0)
+        while chunk := f.read(8192):
             file_hash.update(chunk)
         return file_hash.hexdigest()
 
@@ -81,15 +84,15 @@ class BookImporter:
         db_publisher = store.publisher_repo.get_or_create(name=publisher_name)
         return db_publisher
 
-    def process(self, store: DataStore):
-        logging.info("Importing book")
-        logging.info("Filename: %s, tags: %s", self.file, self.tags)
+    def process(self, store: DataStore) -> bool:
+        logger.info("Importing book")
+        logger.info("Filename: %s, tags: %s", self.file, self.tags)
 
         try:
             book_metadata = self.get_metadata()
         except ImportBookException as e:
-            logging.error(f'Exception while importing {self.file}, {e}')
-            return
+            logger.error(f'Exception while importing {self.file}, {e}')
+            return False
 
         checksum = self._calculate_checksum()
         book = store.session.query(Book).filter(Book.checksum == checksum).first()
@@ -97,8 +100,8 @@ class BookImporter:
             # checksum matches but path differs - file was moved, update path
             if self.file_path and book.file_path != self.file_path:
                 book.file_path = self.file_path
-                logging.info(f"Updated file_path for book {book.id}: {self.file_path}")
-            return
+                logger.info(f"Updated file_path for book {book.id}: {self.file_path}")
+            return False
 
         lang_code = (book_metadata.languages or ['en'])[0]
         language = store.session.query(Language).filter(Language.code == lang_code).first()
@@ -123,3 +126,4 @@ class BookImporter:
             description=book_metadata.description,
             file_path=self.file_path,
         )
+        return True

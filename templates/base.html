@@ -17,6 +17,14 @@
     {% include "navbar.html" %}
 </header>
 
+{% set sync_msg = request.query_params.get('sync_msg', '') %}
+{% if sync_msg %}
+<div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert">
+    <span>{{ sync_msg }}</span>
+    <button class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+</div>
+{% endif %}
+
 {% block content %}
 {% endblock %}
 

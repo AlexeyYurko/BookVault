@@ -18,8 +18,13 @@ class PdfImporter(BookImporter):
         super().__init__(*args, **kwargs)
         self._pdf_buffer: BytesIO | None = None
 
-    def _get_pdf_buffer(self) -> BytesIO:
+    def _get_pdf_source(self) -> str | BytesIO:
+        """Return a path string for local files, BytesIO for uploads."""
+        path = getattr(self.file, 'path', None)
+        if path is not None:
+            return str(path)
         if self._pdf_buffer is None:
+            logger.info('Reading PDF into memory: %s', self.file.filename)
             self.file.file.seek(0)
             self._pdf_buffer = BytesIO(self.file.file.read())
         self._pdf_buffer.seek(0)
@@ -27,7 +32,8 @@ class PdfImporter(BookImporter):
 
     def extract_cover(self):
         filename = self._cover_filename
-        pdf = pdfium.PdfDocument(self._get_pdf_buffer())
+        logger.info('Rendering cover: %s', filename)
+        pdf = pdfium.PdfDocument(self._get_pdf_source())
         page = pdf.get_page(0)
         cover = page.render(scale=300 / 72, optimize_mode=None).to_pil()
         path = Path(settings.static_path, settings.cover_images_path, filename)
@@ -36,7 +42,8 @@ class PdfImporter(BookImporter):
         return filename
 
     def get_metadata(self):
-        pdf = PdfReader(self._get_pdf_buffer())
+        logger.info('Parsing PDF metadata: %s', self.file.filename)
+        pdf = PdfReader(self._get_pdf_source())
         pdf_info = pdf.metadata
         if pdf_info:
             description = pdf_info.get('/Description', pdf_info.get('/Subject')) or ''

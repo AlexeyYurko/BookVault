@@ -26,7 +26,6 @@ class LocalFileWrapper:
     def file(self) -> BinaryIO:
         if self._file is None:
             self._file = open(self.path, 'rb')  # noqa: SIM115
-        self._file.seek(0)
         return self._file
 
 
