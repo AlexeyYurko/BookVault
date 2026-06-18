@@ -1,9 +1,13 @@
+import subprocess
+from pathlib import Path
+
 from fastapi import (
     APIRouter,
     File,
     Form,
     HTTPException,
     Request,
+    Response,
     UploadFile,
 )
 from starlette import status
@@ -72,6 +76,25 @@ def show_book(
             detail=f"Book with id={book_id} not found",
         )
     return templates.TemplateResponse("book_view.html", {"request": request, "book": book, "tags": book.tags})
+
+
+@router.get("/{book_id}/download")
+def download_book(
+    request: Request,
+    book_id: int,
+    store: DataStoreDependency,
+):
+    book = store.book_repo.get_book_by_id(book_id)
+    if not book or not book.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    file_path = Path(book.file_path)
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
+
+    # only works when server is on local machine (server and browser share filesystem)
+    subprocess.Popen(["open", str(file_path)])
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/by_tag/{tag_name}")
