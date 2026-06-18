@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import re
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -29,6 +30,8 @@ class BookMetadata:
 
 class BookImporter:
     FORMAT = None
+    _keyword_cache: list[str] | None = None
+    _keyword_pattern: re.Pattern | None = None
 
     def __init__(self, file, tags, file_path: str | None = None):
         self.file = file
@@ -108,6 +111,25 @@ class BookImporter:
                 path_tags.add(tag)
         return path_tags
 
+    def _derive_keyword_tags(self, store: DataStore, title: str | None, description: str | None) -> set[str]:
+        if self._keyword_pattern is None:
+            keywords = store.keyword_tag_repo.get_all_keywords()
+            self._keyword_cache = keywords
+            if keywords:
+                keywords.sort(key=len, reverse=True)
+                self._keyword_pattern = re.compile(
+                    rf"(?<!\w)({'|'.join(re.escape(kw) for kw in keywords)})(?!\w)", re.IGNORECASE
+                )
+
+        if self._keyword_pattern is None:
+            return set()
+
+        text = " ".join(filter(None, [title, description])).lower()
+        if not text:
+            return set()
+
+        return {m.group(0).lower() for m in self._keyword_pattern.finditer(text)}
+
     def process(self, store: DataStore) -> bool:
         logger.info("Importing book")
         logger.info("Filename: %s, tags: %s", self.file, self.tags)
@@ -118,7 +140,13 @@ class BookImporter:
             logger.error(f"Exception while importing {self.file}, {e}")
             return False
 
+        if book_metadata is None:
+            logger.warning("No metadata extracted for %s, skipping", self.file)
+            return False
+
         self.tags.update(self._derive_path_tags())
+
+        self.tags.update(self._derive_keyword_tags(store, book_metadata.title, book_metadata.description))
 
         checksum = self._calculate_checksum()
         book = store.session.query(Book).filter(Book.checksum == checksum).first()

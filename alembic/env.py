@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config, pool
 
 import app.models
 import app.models.author
+import app.models.keyword_tag
 import app.models.language
 import app.models.publishers  # noqa: F401
 from alembic import context

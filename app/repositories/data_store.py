@@ -1,11 +1,12 @@
 from contextlib import contextmanager
 
 from app.db import Session
-from app.models import Book, Tag
+from app.models import Book, KeywordTag, Tag
 from app.models.author import Author
 from app.models.publishers import Publisher
 from app.repositories.author_repo import AuthorRepository
 from app.repositories.book_repository import BookRepository
+from app.repositories.keyword_tag_repo import KeywordTagRepository
 from app.repositories.publisher_repo import PublisherRepository
 from app.repositories.tag_repository import TagRepository
 
@@ -17,6 +18,7 @@ class DataStore:
         self.tag_repo = TagRepository(session, Tag)
         self.author_repo = AuthorRepository(session, Author)
         self.publisher_repo = PublisherRepository(session, Publisher)
+        self.keyword_tag_repo = KeywordTagRepository(session, KeywordTag)
 
     @contextmanager
     def transaction(self):

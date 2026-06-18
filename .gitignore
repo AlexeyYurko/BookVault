@@ -43,3 +43,5 @@ app/config_local.yml
 
 static/cover_images/*.*
 .env
+
+/scripts/
