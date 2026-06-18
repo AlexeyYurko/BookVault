@@ -3,7 +3,9 @@ import logging
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
+from app.config import settings
 from app.models import Book
 from app.models.language import Language
 from app.repositories.data_store import DataStore
@@ -86,6 +88,26 @@ class BookImporter:
         db_publisher = store.publisher_repo.get_or_create(name=publisher_name)
         return db_publisher
 
+    def _derive_path_tags(self) -> set[str]:
+        if not self.file_path:
+            return set()
+
+        books_dir = Path(settings.books_directory)
+        file_path = Path(self.file_path)
+        try:
+            relative = file_path.relative_to(books_dir)
+        except ValueError:
+            return set()
+
+        parts = list(relative.parts[:-1])
+        root_name = books_dir.name.lower()
+        path_tags = set()
+        for part in parts:
+            tag = part.lower().strip()
+            if tag and tag != root_name:
+                path_tags.add(tag)
+        return path_tags
+
     def process(self, store: DataStore) -> bool:
         logger.info("Importing book")
         logger.info("Filename: %s, tags: %s", self.file, self.tags)
@@ -96,13 +118,20 @@ class BookImporter:
             logger.error(f"Exception while importing {self.file}, {e}")
             return False
 
+        self.tags.update(self._derive_path_tags())
+
         checksum = self._calculate_checksum()
         book = store.session.query(Book).filter(Book.checksum == checksum).first()
         if book:
-            # checksum matches but path differs - file was moved, update path
             if self.file_path and book.file_path != self.file_path:
                 book.file_path = self.file_path
                 logger.info(f"Updated file_path for book {book.id}: {self.file_path}")
+
+            existing_tag_names = {t.name for t in book.tags}
+            for tag_name in self.tags:
+                if tag_name not in existing_tag_names:
+                    tag = store.tag_repo.get_or_create(name=tag_name)
+                    store.book_repo.add_tag(book, tag)
             return False
 
         lang_code = (book_metadata.languages or ["en"])[0]
