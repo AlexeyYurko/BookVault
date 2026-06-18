@@ -20,38 +20,42 @@ class SyncResult:
 
 
 class SyncService:
-    def run(self, store: DataStore) -> SyncResult:
+    def __init__(
+        self,
+        store: DataStore,
+    ):
+        self.store = store
+
+    def run(self) -> SyncResult:
         result = SyncResult()
 
         books_dir = Path(settings.books_directory)
         if not books_dir or not books_dir.is_dir():
-            logger.error('BOOKS_DIRECTORY is not set or does not exist: %s', books_dir)
-            result.errors.append('BOOKS_DIRECTORY is not set or does not exist')
+            logger.error("BOOKS_DIRECTORY is not set or does not exist: %s", books_dir)
+            result.errors.append("BOOKS_DIRECTORY is not set or does not exist")
             return result
 
-        logger.info('Sync started, scanning %s', books_dir)
+        logger.info("Sync started, scanning %s", books_dir)
         scan_result = DirectoryScanner().scan(books_dir)
-        logger.info('Scan complete: %d files found, %d scan errors',
-                     len(scan_result.file_paths), len(scan_result.errors))
+        logger.info("Scan complete: %d files found, %d scan errors", len(scan_result.file_paths), len(scan_result.errors))
 
         for error_path, error_msg in scan_result.errors:
-            logger.warning('Scan error: %s — %s', error_path, error_msg)
-            result.errors.append(f'{error_path}: {error_msg}')
+            logger.warning("Scan error: %s — %s", error_path, error_msg)
+            result.errors.append(f"{error_path}: {error_msg}")
 
         total = len(scan_result.file_paths)
         for idx, file_path in enumerate(scan_result.file_paths, start=1):
-            logger.info('Importing [%d/%d] %s', idx, total, file_path.name)
+            logger.info("Importing [%d/%d] %s", idx, total, file_path.name)
             try:
                 importer = PathImporter(file_path, set())
-                with store.transaction():
-                    if importer.process(store):
+                with self.store.transaction():
+                    if importer.process(self.store):
                         result.added += 1
                     else:
                         result.skipped += 1
             except Exception:
-                logger.exception('Error importing %s', file_path)
-                result.errors.append(f'{file_path}: import failed')
+                logger.exception("Error importing %s", file_path)
+                result.errors.append(f"{file_path}: import failed")
 
-        logger.info('Sync finished: %d added, %d skipped, %d errors',
-                     result.added, result.skipped, len(result.errors))
+        logger.info("Sync finished: %d added, %d skipped, %d errors", result.added, result.skipped, len(result.errors))
         return result
