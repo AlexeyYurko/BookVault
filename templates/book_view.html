@@ -8,7 +8,12 @@
         {% endif %}
     </div>
     <div class="info">
-        <h1>{{ book.title }}</h1>
+        <h1>{{ book.title }}
+            {% if book.file_path %}
+            <a hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
+               class="inline-block ml-2 px-3 py-1 bg-blue-500 text-white rounded text-sm cursor-pointer">Open</a>
+            {% endif %}
+        </h1>
         <p><strong>Authors:</strong> {% for author in book.authors %} {{ author.name }} {% endfor %}</p>
         <p><strong>Edition:</strong> {{ book.edition }}</p>
         <p><strong>ISBN:</strong> {{ book.isbn }}</p>
