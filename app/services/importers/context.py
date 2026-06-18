@@ -21,5 +21,6 @@ class ImportContext:
     db_tags: list[Any] = field(default_factory=list)
     language: Any | None = None
     cover: str | None = None
+    edition: str | None = None
     is_new: bool = True
     existing_book: Book | None = None
