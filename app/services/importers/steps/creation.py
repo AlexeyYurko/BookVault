@@ -23,6 +23,7 @@ class BookCreationStep(PipelineStep):
             language=ctx.language,
             publisher=ctx.db_publisher,
             description=ctx.metadata.description,
+            edition=ctx.edition,
             file_path=ctx.importer.file_path,
         )
         return ctx
