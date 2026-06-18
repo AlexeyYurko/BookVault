@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import (
     Depends,
 )
@@ -14,5 +16,13 @@ def get_data_store(db_session: Session = Depends(get_db_session)) -> DataStore:
     return DataStore(db_session)
 
 
-def get_sync_service() -> SyncService:
-    return SyncService()
+DataStoreDependency = Annotated[DataStore, Depends(get_data_store)]
+
+
+def get_sync_service(
+    store: DataStoreDependency,
+) -> SyncService:
+    return SyncService(store)
+
+
+SyncServiceDependency = Annotated[SyncService, Depends(get_sync_service)]
