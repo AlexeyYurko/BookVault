@@ -24,3 +24,4 @@ class ImportContext:
     edition: str | None = None
     is_new: bool = True
     existing_book: Book | None = None
+    book: Book | None = None

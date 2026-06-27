@@ -12,6 +12,7 @@ from app.services.importers.steps import (
     CoverExtractionStep,
     DeduplicationStep,
     EditionExtractionStep,
+    EditionGroupStep,
     ExtractMetadataStep,
     KeywordEnrichmentStep,
     LanguageResolutionStep,
@@ -80,6 +81,7 @@ class BookImporter:
             CoverExtractionStep(),
             TagResolutionStep(),
             BookCreationStep(),
+            EditionGroupStep(),
         ]
 
     def process(self, store) -> bool:

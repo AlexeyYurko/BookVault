@@ -46,6 +46,9 @@ class Book(Base):
     collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", name="book_collections_fk"), nullable=True, index=True)
     collection: Mapped["Collection | None"] = relationship(backref="books")
 
+    edition_group_id: Mapped[int] = mapped_column(ForeignKey("edition_groups.id", name="book_edition_group_fk"), nullable=True, index=True)
+    edition_group: Mapped["EditionGroup | None"] = relationship(back_populates="books")
+
     checksum: Mapped[str] = mapped_column(String, nullable=True, index=True)
     format: Mapped[str] = mapped_column(String, nullable=True)
 
@@ -88,3 +91,12 @@ class Collection(Base):
 
     id: Mapped[int_pk]
     name: Mapped[str] = mapped_column(String, nullable=False, index=True)
+
+
+class EditionGroup(Base):
+    __tablename__ = 'edition_groups'
+
+    id: Mapped[int_pk]
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)
+
+    books: Mapped[list["Book"]] = relationship(back_populates="edition_group")
