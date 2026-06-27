@@ -6,6 +6,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -15,7 +16,7 @@ from starlette.responses import RedirectResponse
 
 from app.handlers.dependencies import DataStoreDependency
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
-from app.template_utils import templates
+from app.template_utils import DEFAULT_PER_PAGE, Pagination, normalize_pagination, templates
 
 ALLOWED_TYPES = {
     "application/pdf": PdfImporter,
@@ -26,18 +27,39 @@ ALLOWED_TYPES = {
 router = APIRouter()
 
 
-@router.post("/search", summary="Search books", status_code=status.HTTP_200_OK)
+@router.get("/search", summary="Search books", status_code=status.HTTP_200_OK)
 def search_books(
     request: Request,
     store: DataStoreDependency,
-    query: str = Form(default=""),
+    query: str = Query(default=""),
+    page: int | None = None,
+    per_page: int | None = None,
 ):
+    page, per_page_size = normalize_pagination(page, per_page)
+    books, total, page = store.book_repo.get_searched_books(query, page=page, per_page=per_page_size)
     tags = []
-    books = store.book_repo.get_searched_books(query)
     for book in books:
         tags.extend(iter(book.tags))
     tags = sorted(set(tags), key=lambda tag: tag.name)
-    return templates.TemplateResponse("books_list.html", {"request": request, "books": books, "tags": tags})
+    pagination = Pagination(
+        request=request,
+        route_name="search_books",
+        page=page,
+        per_page=per_page_size,
+        total=total,
+        extra_query={"query": query} if query else {},
+    )
+    return templates.TemplateResponse(
+        "books_list.html",
+        {
+            "request": request,
+            "books": books,
+            "tags": tags,
+            "pagination": pagination,
+            "per_page": per_page_size,
+            "default_per_page": DEFAULT_PER_PAGE,
+        },
+    )
 
 
 @router.get("/add_books")
@@ -102,13 +124,34 @@ def show_books_by_tag(
     request: Request,
     tag_name: str,
     store: DataStoreDependency,
+    page: int | None = None,
+    per_page: int | None = None,
 ):
-    books = store.book_repo.get_books_by_tag(tag_name)
+    page, per_page_size = normalize_pagination(page, per_page)
+    books, total, page = store.book_repo.get_books_by_tag(tag_name, page=page, per_page=per_page_size)
     tags = []
     for book in books:
         tags.extend(iter(book.tags))
     tags = sorted(set(tags), key=lambda tag: tag.name)
-    return templates.TemplateResponse("books_list.html", {"request": request, "books": books, "tags": tags})
+    pagination = Pagination(
+        request=request,
+        route_name="show_books_by_tag",
+        route_kwargs={"tag_name": tag_name},
+        page=page,
+        per_page=per_page_size,
+        total=total,
+    )
+    return templates.TemplateResponse(
+        "books_list.html",
+        {
+            "request": request,
+            "books": books,
+            "tags": tags,
+            "pagination": pagination,
+            "per_page": per_page_size,
+            "default_per_page": DEFAULT_PER_PAGE,
+        },
+    )
 
 
 @router.post("/books/{book_id}/tags")

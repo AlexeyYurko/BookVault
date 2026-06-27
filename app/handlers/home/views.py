@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 
 from app.handlers.dependencies import DataStoreDependency
-from app.template_utils import templates
+from app.template_utils import DEFAULT_PER_PAGE, Pagination, normalize_pagination, templates
 
 router = APIRouter()
 
@@ -10,7 +10,27 @@ router = APIRouter()
 def homepage(
     request: Request,
     store: DataStoreDependency,
+    page: int | None = None,
+    per_page: int | None = None,
 ):
-    books = store.book_repo.get_all_books()
+    page, per_page_size = normalize_pagination(page, per_page)
+    books, total, page = store.book_repo.get_all_books(page=page, per_page=per_page_size)
     tags = store.book_repo.get_tags_linked_to_books()
-    return templates.TemplateResponse("index.html", {"request": request, "books": books, "tags": tags})
+    pagination = Pagination(
+        request=request,
+        route_name="homepage",
+        page=page,
+        per_page=per_page_size,
+        total=total,
+    )
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "books": books,
+            "tags": tags,
+            "pagination": pagination,
+            "per_page": per_page_size,
+            "default_per_page": DEFAULT_PER_PAGE,
+        },
+    )

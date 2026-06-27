@@ -130,6 +130,54 @@
                 {% endfor %}
             </form>
         </div>
+
+        <!-- Pagination footer -->
+        {% if pagination is defined and pagination.total > 0 %}
+        <div class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-gray-50 border-t border-gray-200 text-sm">
+            <div class="text-gray-600">
+                {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
+                &middot;
+                page {{ pagination.page }} of {{ pagination.total_pages }}
+            </div>
+
+            <div class="flex items-center gap-1">
+                {% if pagination.has_prev %}
+                <a hx-get="{{ pagination.url_for(pagination.page - 1) }}" hx-target="#books-list" hx-push-url="true"
+                    class="px-3 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">Prev</a>
+                {% else %}
+                <span class="px-3 py-1 rounded border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed">Prev</span>
+                {% endif %}
+
+                {% for p in range(1, pagination.total_pages + 1) %}
+                    {% if p == pagination.page %}
+                    <span class="px-3 py-1 rounded border border-blue-500 bg-blue-500 text-white">{{ p }}</span>
+                    {% else %}
+                    <a hx-get="{{ pagination.url_for(p) }}" hx-target="#books-list" hx-push-url="true"
+                        class="px-3 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <a hx-get="{{ pagination.url_for(pagination.page + 1) }}" hx-target="#books-list" hx-push-url="true"
+                    class="px-3 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">Next</a>
+                {% else %}
+                <span class="px-3 py-1 rounded border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed">Next</span>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center gap-1">
+                <span class="text-gray-600 mr-1">Per page:</span>
+                {% for size in (20, 50, 100) %}
+                    {% if size == pagination.per_page %}
+                    <span class="px-2 py-1 rounded border border-blue-500 bg-blue-500 text-white">{{ size }}</span>
+                    {% else %}
+                    <a hx-get="{{ pagination.url_for(1, size) }}" hx-target="#books-list" hx-push-url="true"
+                        class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">{{ size }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
