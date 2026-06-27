@@ -38,4 +38,4 @@ class PathImporter:
         self._importer = importer_cls(LocalFileWrapper(path=path), tags, file_path=str(path))
 
     def process(self, store):
-        self._importer.process(store)
+        return self._importer.process(store)

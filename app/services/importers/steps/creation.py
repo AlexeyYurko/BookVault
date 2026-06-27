@@ -13,7 +13,7 @@ class BookCreationStep(PipelineStep):
         if ctx.metadata is None:
             return ctx
 
-        ctx.store.book_repo.create(
+        ctx.book = ctx.store.book_repo.create(
             title=ctx.metadata.title,
             authors=ctx.db_authors,
             checksum=ctx.checksum,
@@ -26,4 +26,5 @@ class BookCreationStep(PipelineStep):
             edition=ctx.edition,
             file_path=ctx.importer.file_path,
         )
+        ctx.store.session.flush()
         return ctx
