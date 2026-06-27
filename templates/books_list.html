@@ -35,10 +35,34 @@
                     <input type="checkbox" id="select-all" class="form-checkbox h-4 w-4 text-blue-600">
                 </div>
                 <div class="col-span-1"></div>
-                <div class="col-span-3">Title & Author</div>
-                <div class="col-span-2">Publisher</div>
-                <div class="col-span-1">Language</div>
-                <div class="col-span-2">Added</div>
+                <div class="col-span-3">
+                    <a hx-get="{{ pagination.sort_url('title') }}" hx-target="#books-list" hx-push-url="true"
+                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        Title &amp; Author
+                        {% if pagination.is_sorted('title') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                    </a>
+                </div>
+                <div class="col-span-2">
+                    <a hx-get="{{ pagination.sort_url('publisher_id') }}" hx-target="#books-list" hx-push-url="true"
+                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        Publisher
+                        {% if pagination.is_sorted('publisher_id') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                    </a>
+                </div>
+                <div class="col-span-1">
+                    <a hx-get="{{ pagination.sort_url('language_code') }}" hx-target="#books-list" hx-push-url="true"
+                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        Language
+                        {% if pagination.is_sorted('language_code') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                    </a>
+                </div>
+                <div class="col-span-2">
+                    <a hx-get="{{ pagination.sort_url('added_at') }}" hx-target="#books-list" hx-push-url="true"
+                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        Added
+                        {% if pagination.is_sorted('added_at') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                    </a>
+                </div>
                 <div class="col-span-2">Tags</div>
             </div>
         </div>

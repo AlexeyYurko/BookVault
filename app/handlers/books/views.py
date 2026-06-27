@@ -16,7 +16,7 @@ from starlette.responses import RedirectResponse
 
 from app.handlers.dependencies import DataStoreDependency
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
-from app.template_utils import DEFAULT_PER_PAGE, Pagination, normalize_pagination, templates
+from app.template_utils import DEFAULT_PER_PAGE, Pagination, normalize_pagination, normalize_sort, templates
 
 ALLOWED_TYPES = {
     "application/pdf": PdfImporter,
@@ -28,15 +28,18 @@ router = APIRouter()
 
 
 @router.get("/search", summary="Search books", status_code=status.HTTP_200_OK)
-def search_books(
+def search_books(  # noqa: PLR0913
     request: Request,
     store: DataStoreDependency,
     query: str = Query(default=""),
     page: int | None = None,
     per_page: int | None = None,
+    sort_by: str | None = None,
+    order: str | None = None,
 ):
     page, per_page_size = normalize_pagination(page, per_page)
-    books, total, page = store.book_repo.get_searched_books(query, page=page, per_page=per_page_size)
+    sort_by, sort_order = normalize_sort(sort_by, order)
+    books, total, page = store.book_repo.get_searched_books(query, page=page, per_page=per_page_size, sort_by=sort_by, order=sort_order)
     tags = []
     for book in books:
         tags.extend(iter(book.tags))
@@ -47,6 +50,8 @@ def search_books(
         page=page,
         per_page=per_page_size,
         total=total,
+        sort_by=sort_by,
+        sort_order=sort_order,
         extra_query={"query": query} if query else {},
     )
     return templates.TemplateResponse(
@@ -120,15 +125,18 @@ def download_book(
 
 
 @router.get("/by_tag/{tag_name}")
-def show_books_by_tag(
+def show_books_by_tag(  # noqa: PLR0913
     request: Request,
     tag_name: str,
     store: DataStoreDependency,
     page: int | None = None,
     per_page: int | None = None,
+    sort_by: str | None = None,
+    order: str | None = None,
 ):
     page, per_page_size = normalize_pagination(page, per_page)
-    books, total, page = store.book_repo.get_books_by_tag(tag_name, page=page, per_page=per_page_size)
+    sort_by, sort_order = normalize_sort(sort_by, order)
+    books, total, page = store.book_repo.get_books_by_tag(tag_name, page=page, per_page=per_page_size, sort_by=sort_by, order=sort_order)
     tags = []
     for book in books:
         tags.extend(iter(book.tags))
@@ -140,6 +148,8 @@ def show_books_by_tag(
         page=page,
         per_page=per_page_size,
         total=total,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     return templates.TemplateResponse(
         "books_list.html",
