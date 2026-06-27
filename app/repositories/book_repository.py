@@ -7,6 +7,10 @@ from app.models.publishers import Publisher
 from app.repositories.base import AbstractRepository
 
 
+def _total_pages(total: int, per_page: int) -> int:
+    return max(1, (total + per_page - 1) // per_page) if total else 1
+
+
 class BookRepository(AbstractRepository):
     def get_tags_linked_to_books(self):
         tags_query = (
@@ -18,27 +22,32 @@ class BookRepository(AbstractRepository):
         )
         return self.session.scalars(tags_query).all()
 
-    def get_searched_books(self, query: str) -> list[Book]:
+    def get_searched_books(self, query: str, page: int = 1, per_page: int = 20) -> tuple[list[Book], int, int]:
         pattern = f"%{query}%"
-        return (
+        where = or_(
+            Book.title.ilike(pattern),
+            Book.isbn.ilike(pattern),
+            Book.description.ilike(pattern),
+            Book.edition.ilike(pattern),
+            Book.authors.any(Author.name.ilike(pattern)),
+            Book.tags.any(Tag.name.ilike(pattern)),
+            Book.publisher.has(Publisher.name.ilike(pattern)),
+            Book.series.has(BookSeries.name.ilike(pattern)),
+            Book.collection.has(Collection.name.ilike(pattern)),
+        )
+        total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
+        page = max(1, min(page, _total_pages(total, per_page)))
+        books = (
             self.session
             .scalars(
                 select(Book)
-                .where(
-                    or_(
-                        Book.title.ilike(pattern),
-                        Book.isbn.ilike(pattern),
-                        Book.description.ilike(pattern),
-                        Book.edition.ilike(pattern),
-                        Book.authors.any(Author.name.ilike(pattern)),
-                        Book.tags.any(Tag.name.ilike(pattern)),
-                        Book.publisher.has(Publisher.name.ilike(pattern)),
-                        Book.series.has(BookSeries.name.ilike(pattern)),
-                        Book.collection.has(Collection.name.ilike(pattern)),
-                    )
-                )
+                .where(where)
+                .order_by(Book.id.asc())
+                .offset((page - 1) * per_page)
+                .limit(per_page)
             ).all()
         )
+        return books, total, page
 
     def get_book_by_id(self, book_id: int) -> Book:
         book = (
@@ -54,17 +63,36 @@ class BookRepository(AbstractRepository):
         )
         return book
 
-    def get_books_by_tag(self, tag_name: str) -> list[Book]:
-        return (
+    def get_books_by_tag(self, tag_name: str, page: int = 1, per_page: int = 20) -> tuple[list[Book], int, int]:
+        where = Book.tags.any(name=tag_name)
+        total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
+        page = max(1, min(page, _total_pages(total, per_page)))
+        books = (
             self.session
             .scalars(
                 select(Book)
-                .where(Book.tags.any(name=tag_name))
+                .where(where)
+                .order_by(Book.id.asc())
+                .offset((page - 1) * per_page)
+                .limit(per_page)
             )
             .all())
+        return books, total, page
 
-    def get_all_books(self):
-        return self.session.scalars(select(Book)).all()
+    def get_all_books(self, page: int = 1, per_page: int = 20) -> tuple[list[Book], int, int]:
+        total = self.session.scalar(select(func.count()).select_from(Book)) or 0
+        page = max(1, min(page, _total_pages(total, per_page)))
+        books = (
+            self.session
+            .scalars(
+                select(Book)
+                .order_by(Book.id.asc())
+                .offset((page - 1) * per_page)
+                .limit(per_page)
+            )
+            .all()
+        )
+        return books, total, page
 
     def add_tag(self, book: Book, tag: Tag) -> None:
         if tag not in book.tags:
