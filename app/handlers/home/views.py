@@ -28,8 +28,9 @@ def homepage(  # noqa: PLR0913
         sort_by=sort_by,
         sort_order=sort_order,
     )
+    template = "books_list.html" if request.headers.get("hx-request") == "true" else "index.html"
     return templates.TemplateResponse(
-        "index.html",
+        template,
         {
             "request": request,
             "books": books,

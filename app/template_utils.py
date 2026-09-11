@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 
+from app.config import settings
 from app.repositories.book_repository import (
     DEFAULT_SORT_BY,
     DEFAULT_SORT_ORDER,
@@ -8,6 +11,9 @@ from app.repositories.book_repository import (
 )
 
 templates = Jinja2Templates(directory="templates")
+
+_css_path = Path(settings.static_path) / "css" / "styles.css"
+templates.env.globals["css_version"] = int(_css_path.stat().st_mtime)
 
 ALLOWED_PER_PAGE = (20, 50, 100)
 DEFAULT_PER_PAGE = 20

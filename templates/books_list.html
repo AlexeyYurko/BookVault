@@ -1,215 +1,246 @@
-<div class="grid gap-3 grid-cols-2 mt-4" style="grid-template-columns: 2fr 10fr;">
-    <div class="mx-2 bg-light rounded-md p-3">
-        <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-gray-700">Tags</span>
-            <button id="clear-tags-btn"
-                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded transition-colors"
-                hx-get="{{ url_for('homepage') }}" hx-target="#books-list" hx-push-url="true">
-                Clear Filters
-            </button>
-        </div>
-        {% if active_tags|default([]) %}
-        <div class="mb-3">
-            <span class="text-xs font-medium text-gray-700">Selected tags</span>
-            <div class="flex flex-wrap gap-1 mt-1">
-                {% for tag_name in active_tags %}
-                <span class="inline-flex items-center gap-1 bg-blue-500 text-white rounded px-2 py-0.5 lowercase text-xs">
-                    {{ tag_name }}
-                    <button type="button" class="tag-remove font-bold leading-none hover:text-blue-200"
-                        data-tag="{{ tag_name }}" title="Remove {{ tag_name }}">×</button>
-                </span>
+<div class="mx-auto mt-6 max-w-7xl px-4 sm:px-6">
+    <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <!-- Tags sidebar -->
+        <aside class="h-fit rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tags</h2>
+                {% if active_tags|default([]) %}
+                <button id="clear-tags-btn"
+                    class="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    hx-get="{{ url_for('homepage') }}" hx-target="#books-list" hx-push-url="true">
+                    Clear
+                </button>
+                {% endif %}
+            </div>
+            {% if active_tags|default([]) %}
+            <div class="mb-3 border-b border-slate-100 pb-3 dark:border-slate-700">
+                <div class="flex flex-wrap gap-1.5">
+                    {% for tag_name in active_tags %}
+                    <span class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium lowercase text-white">
+                        {{ tag_name }}
+                        <button type="button" class="tag-remove font-bold leading-none text-indigo-200 transition-colors hover:text-white"
+                            data-tag="{{ tag_name }}" title="Remove {{ tag_name }}">×</button>
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            <div class="flex flex-wrap gap-1.5">
+                {% for tag in tags %}
+                <a href=""
+                    class="tag-filter chip cursor-pointer lowercase transition-colors hover:bg-indigo-100 hover:text-indigo-800 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300"
+                    data-tag="{{ tag.name }}">{{ tag.name }}
+                </a>
+                {% else %}
+                <span class="text-xs text-slate-400 dark:text-slate-500">No related tags</span>
                 {% endfor %}
             </div>
-        </div>
-        {% endif %}
-        <div class="flex flex-wrap">
-            {% for tag in tags %}
-            <a href=""
-                class="inline-block bg-gray-300 hover:bg-gray-400 text-black text-decoration-black py-1 px-1 rounded-lg lowercase text-xs mr-1 mb-1 transition-colors tag-filter"
-                data-tag="{{ tag.name }}">{{ tag.name }}
-            </a>
-            {% else %}
-            <span class="text-xs text-gray-400">No related tags</span>
-            {% endfor %}
-        </div>
-    </div>
+        </aside>
 
-    <div class="mx-2 bg-light rounded-md flex flex-col" style="height: calc(100vh - 120px);">
-        <!-- Fixed header outside of scroll container -->
-        <div class="flex-shrink-0">
+        <!-- Books table -->
+        <div class="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
+            style="height: calc(100vh - 120px);">
             <!-- Table header -->
             <div
-                class="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 text-sm font-medium text-gray-700 border-b border-gray-200">
-                <div class="col-span-1">
-                    <input type="checkbox" id="select-all" class="form-checkbox h-4 w-4 text-blue-600">
+                class="grid flex-shrink-0 grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
+                <div class="col-span-1 flex items-center">
+                    <input type="checkbox" id="select-all" class="h-4 w-4 accent-indigo-600" title="Select all">
                 </div>
                 <div class="col-span-1"></div>
                 <div class="col-span-3">
                     <a hx-get="{{ pagination.sort_url('title') }}" hx-target="#books-list" hx-push-url="true"
-                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                         Title &amp; Author
-                        {% if pagination.is_sorted('title') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                        {% if pagination.is_sorted('title') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                     </a>
                 </div>
                 <div class="col-span-2">
                     <a hx-get="{{ pagination.sort_url('publisher_id') }}" hx-target="#books-list" hx-push-url="true"
-                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                         Publisher
-                        {% if pagination.is_sorted('publisher_id') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                        {% if pagination.is_sorted('publisher_id') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                     </a>
                 </div>
                 <div class="col-span-1">
                     <a hx-get="{{ pagination.sort_url('language_code') }}" hx-target="#books-list" hx-push-url="true"
-                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                         Language
-                        {% if pagination.is_sorted('language_code') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                        {% if pagination.is_sorted('language_code') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                     </a>
                 </div>
                 <div class="col-span-2">
                     <a hx-get="{{ pagination.sort_url('added_at') }}" hx-target="#books-list" hx-push-url="true"
-                        class="inline-flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+                        class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                         Added
-                        {% if pagination.is_sorted('added_at') %}<span class="text-blue-600">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                        {% if pagination.is_sorted('added_at') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                     </a>
                 </div>
                 <div class="col-span-2">Tags</div>
             </div>
-        </div>
 
-        <!-- Scrollable content -->
-        <div class="flex-1 overflow-y-auto">
-            <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post">
-                {% for book in books %}
-                <div
-                    class="grid grid-cols-12 gap-2 items-center py-2 px-3 border-b border-gray-200 hover:bg-gray-50 text-sm">
-                    <!-- Checkbox -->
-                    <div class="col-span-1">
-                        <input type="checkbox" name="book_ids" value="{{ book.id }}"
-                            class="form-checkbox h-4 w-4 text-blue-600 book-checkbox">
-                    </div>
-
-                    <!-- Cover -->
-                    <div class="col-span-1 flex flex-col items-center gap-1">
-                        {% if book.cover %}
-                        <div class="thumbnail_container">
-                        <img class="book_list_thumbnail object-cover h-12 w-8"
-                            src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="" loading="lazy">
+            <!-- Scrollable content -->
+            <div class="flex-1 overflow-y-auto">
+                <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post">
+                    {% for book in books %}
+                    <div
+                        class="grid grid-cols-12 items-center gap-2 border-b border-slate-100 px-3 py-2 text-sm transition-colors hover:bg-slate-50 dark:border-slate-700/60 dark:hover:bg-slate-700/30">
+                        <!-- Checkbox -->
+                        <div class="col-span-1">
+                            <input type="checkbox" name="book_ids" value="{{ book.id }}"
+                                class="book-checkbox h-4 w-4 accent-indigo-600" title="Select {{ book.title }}">
                         </div>
-                        {% endif %}
-                        {% if book.file_path %}
-                        <a hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
-                           class="text-gray-500 hover:text-blue-600 cursor-pointer" title="Open file">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
-                        </a>
-                        {% endif %}
-                    </div>
 
-                    <!-- Title & Author -->
-                    <div class="col-span-3">
-                        <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-blue-600 hover:text-blue-800">
-                            <div class="font-medium text-gray-900">{{ book.title }}</div>
-                            {% if book.authors %}
-                            <div class="text-gray-600 text-xs mt-0.5">{{ book.authors|join(', ', attribute='name') }}
+                        <!-- Cover -->
+                        <div class="col-span-1 flex flex-col items-center gap-1">
+                            {% if book.cover %}
+                            <div class="thumbnail_container">
+                                <img class="book_list_thumbnail object-cover h-12 w-8 rounded-sm shadow-sm"
+                                    src="{{ url_for('static', path='cover_images/' ~ book.cover) }}"
+                                    alt="{{ book.title }}" loading="lazy">
                             </div>
                             {% endif %}
-                        </a>
-                    </div>
-
-                    <!-- Publisher -->
-                    <div class="col-span-2 text-gray-700 text-xs">
-                        {% if book.publisher %}
-                        {{ book.publisher.name }}
-                        {% else %}
-                        <span class="text-gray-400">Unknown</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Language -->
-                    <div class="col-span-1 text-gray-700">
-                        {% if book.language %}
-                        <span class="inline-block bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs">{{
-                            book.language.name }}</span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">{{ book.language_code or 'Unknown' }}</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Added Date -->
-                    <div class="col-span-2 text-gray-600 text-xs">
-                        {{ book.added_at.strftime('%Y-%m-%d') if book.added_at else 'Unknown' }}
-                    </div>
-
-                    <!-- Tags -->
-                    <div class="col-span-2">
-                        {% if book.tags %}
-                        <div class="flex flex-wrap gap-0.5">
-                            {% for tag in book.tags[:3]|sort(attribute='name') %}
-                            <a href="" data-tag="{{ tag.name }}"
-                                class="inline-block bg-gray-200 hover:bg-gray-300 rounded px-1 py-0.5 text-[0.6em] leading-none font-medium text-gray-700 cursor-pointer transition-colors tag-filter">
-                                {{ tag.name }}
+                            {% if book.file_path %}
+                            <a hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
+                                class="text-slate-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                                title="Open file">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
                             </a>
-                            {% endfor %}
-                            {% if book.tags|length > 3 %}
-                            <span class="text-gray-500 text-xs">+{{ book.tags|length - 3 }}</span>
                             {% endif %}
                         </div>
-                        {% endif %}
+
+                        <!-- Title & Author -->
+                        <div class="col-span-3 min-w-0">
+                            <a href="{{ url_for('show_book', book_id=book.id) }}"
+                                class="block transition-colors hover:text-indigo-600 dark:hover:text-indigo-400">
+                                <div class="truncate font-medium text-slate-900 dark:text-white">{{ book.title }}</div>
+                                {% if book.authors %}
+                                <div class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</div>
+                                {% endif %}
+                            </a>
+                        </div>
+
+                        <!-- Publisher -->
+                        <div class="col-span-2 truncate text-xs text-slate-600 dark:text-slate-300">
+                            {% if book.publisher %}
+                            {{ book.publisher.name }}
+                            {% else %}
+                            <span class="text-slate-400 dark:text-slate-500">Unknown</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Language -->
+                        <div class="col-span-1">
+                            {% if book.language %}
+                            <span class="inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">{{
+                                book.language.name }}</span>
+                            {% else %}
+                            <span class="text-xs text-slate-400 dark:text-slate-500">{{ book.language_code or 'Unknown' }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Added Date -->
+                        <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400">
+                            {{ book.added_at.strftime('%Y-%m-%d') if book.added_at else 'Unknown' }}
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="col-span-2 min-w-0">
+                            {% if book.tags %}
+                            <div class="flex flex-wrap gap-0.5">
+                                {% for tag in book.tags[:3]|sort(attribute='name') %}
+                                <a href="" data-tag="{{ tag.name }}"
+                                    class="tag-filter inline-block cursor-pointer rounded bg-slate-100 px-1.5 py-0.5 text-[11px] leading-none font-medium text-slate-600 transition-colors hover:bg-indigo-100 hover:text-indigo-800 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300">
+                                    {{ tag.name }}
+                                </a>
+                                {% endfor %}
+                                {% if book.tags|length > 3 %}
+                                <span class="text-xs text-slate-400 dark:text-slate-500">+{{ book.tags|length - 3 }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
+                    {% else %}
+                    <div class="flex flex-col items-center justify-center gap-2 p-12 text-center">
+                        <svg class="h-10 w-10 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No books found</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500">Try adjusting your search or filters</p>
+                    </div>
+                    {% endfor %}
+                </form>
+            </div>
+
+            <!-- Pagination footer -->
+            {% if pagination is defined and pagination.total > 0 %}
+            {% set current = pagination.page %}
+            {% set total = pagination.total_pages %}
+            {% set page_items = [] %}
+            {% if total <= 7 %}
+                {% for p in range(1, total + 1) %}{% set _ = page_items.append(p) %}{% endfor %}
+            {% else %}
+                {% set _ = page_items.append(1) %}
+                {% if current > 3 %}{% set _ = page_items.append('…') %}{% endif %}
+                {% for p in range([2, current - 1] | max, [total - 1, current + 1] | min + 1) %}
+                    {% set _ = page_items.append(p) %}
+                {% endfor %}
+                {% if current < total - 2 %}{% set _ = page_items.append('…') %}{% endif %}
+                {% set _ = page_items.append(total) %}
+            {% endif %}
+            <div class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div class="text-slate-500 dark:text-slate-400">
+                    {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
+                    &middot;
+                    page {{ pagination.page }} of {{ pagination.total_pages }}
                 </div>
-                {% endfor %}
-            </form>
-        </div>
 
-        <!-- Pagination footer -->
-        {% if pagination is defined and pagination.total > 0 %}
-        <div class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-gray-50 border-t border-gray-200 text-sm">
-            <div class="text-gray-600">
-                {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
-                &middot;
-                page {{ pagination.page }} of {{ pagination.total_pages }}
-            </div>
-
-            <div class="flex items-center gap-1">
-                {% if pagination.has_prev %}
-                <a hx-get="{{ pagination.url_for(pagination.page - 1) }}" hx-target="#books-list" hx-push-url="true"
-                    class="px-3 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">Prev</a>
-                {% else %}
-                <span class="px-3 py-1 rounded border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed">Prev</span>
-                {% endif %}
-
-                {% for p in range(1, pagination.total_pages + 1) %}
-                    {% if p == pagination.page %}
-                    <span class="px-3 py-1 rounded border border-blue-500 bg-blue-500 text-white">{{ p }}</span>
+                <div class="flex items-center gap-1">
+                    {% if pagination.has_prev %}
+                    <a hx-get="{{ pagination.url_for(pagination.page - 1) }}" hx-target="#books-list" hx-push-url="true"
+                        class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Prev</a>
                     {% else %}
-                    <a hx-get="{{ pagination.url_for(p) }}" hx-target="#books-list" hx-push-url="true"
-                        class="px-3 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">{{ p }}</a>
+                    <span class="cursor-not-allowed rounded-md border border-slate-200 bg-slate-100 px-3 py-1 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500">Prev</span>
                     {% endif %}
-                {% endfor %}
 
-                {% if pagination.has_next %}
-                <a hx-get="{{ pagination.url_for(pagination.page + 1) }}" hx-target="#books-list" hx-push-url="true"
-                    class="px-3 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">Next</a>
-                {% else %}
-                <span class="px-3 py-1 rounded border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed">Next</span>
-                {% endif %}
-            </div>
+                    {% for p in page_items %}
+                        {% if p == current %}
+                        <span class="rounded-md border border-indigo-600 bg-indigo-600 px-3 py-1 font-medium text-white">{{ p }}</span>
+                        {% elif p is number %}
+                        <a hx-get="{{ pagination.url_for(p) }}" hx-target="#books-list" hx-push-url="true"
+                            class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">{{ p }}</a>
+                        {% else %}
+                        <span class="px-1 text-slate-400 dark:text-slate-500">{{ p }}</span>
+                        {% endif %}
+                    {% endfor %}
 
-            <div class="flex items-center gap-1">
-                <span class="text-gray-600 mr-1">Per page:</span>
-                {% for size in (20, 50, 100) %}
-                    {% if size == pagination.per_page %}
-                    <span class="px-2 py-1 rounded border border-blue-500 bg-blue-500 text-white">{{ size }}</span>
+                    {% if pagination.has_next %}
+                    <a hx-get="{{ pagination.url_for(pagination.page + 1) }}" hx-target="#books-list" hx-push-url="true"
+                        class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Next</a>
                     {% else %}
-                    <a hx-get="{{ pagination.url_for(1, size) }}" hx-target="#books-list" hx-push-url="true"
-                        class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">{{ size }}</a>
+                    <span class="cursor-not-allowed rounded-md border border-slate-200 bg-slate-100 px-3 py-1 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500">Next</span>
                     {% endif %}
-                {% endfor %}
+                </div>
+
+                <div class="flex items-center gap-1">
+                    <span class="mr-1 text-slate-500 dark:text-slate-400">Per page:</span>
+                    {% for size in (20, 50, 100) %}
+                        {% if size == pagination.per_page %}
+                        <span class="rounded-md border border-indigo-600 bg-indigo-600 px-2 py-1 font-medium text-white">{{ size }}</span>
+                        {% else %}
+                        <a hx-get="{{ pagination.url_for(1, size) }}" hx-target="#books-list" hx-push-url="true"
+                            class="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">{{ size }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 </div>
 

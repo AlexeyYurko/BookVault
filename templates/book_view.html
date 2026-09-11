@@ -1,60 +1,147 @@
 {% extends 'base.html' %}
 
+{% block title %}{{ book.title }} — BookVault{% endblock %}
+
 {% block content %}
-<div class="book-details">
-    <div class="cover">
-        {% if book.cover %}
-        <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="Book Cover">
-        {% endif %}
-    </div>
-    <div class="info">
-        <h1>{{ book.title }}
-            {% if book.file_path %}
-            <a hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
-               class="inline-block ml-2 px-3 py-1 bg-blue-500 text-white rounded text-sm cursor-pointer">Open</a>
-            {% endif %}
-        </h1>
-        <p><strong>Authors:</strong> {% for author in book.authors %} {{ author.name }} {% endfor %}</p>
-        <p><strong>Edition:</strong> {{ book.edition }}</p>
-        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
-        <p><strong>Description:</strong><small> {{ book.description|safe }}</small></p>
-        <p><strong>Amazon URL:</strong>
-            {% if book.amazon_url %}
-            <a href="{{ book.amazon_url }}">
-                {{ book.amazon_url }}
-                {% endif %}</a>
-        </p>
-        <p><strong>Goodreads URL:</strong>
-            {% if book.goodreads_url %}
-            <a href="{{ book.goodreads_url }}">{{ book.goodreads_url }}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+    <a href="{{ url_for('homepage') }}"
+        class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to library
+    </a>
+
+    <div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
+        <div class="flex flex-col gap-8 sm:flex-row">
+            <div class="mx-auto shrink-0 sm:mx-0">
+                {% if book.cover %}
+                <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="{{ book.title }} cover"
+                    class="h-64 w-44 rounded-lg object-cover shadow-md ring-1 ring-slate-900/5">
+                {% else %}
+                <div
+                    class="flex h-64 w-44 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-900/5 dark:bg-slate-700">
+                    <svg class="h-12 w-12 text-slate-300 dark:text-slate-500" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                </div>
                 {% endif %}
-            </a>
-        </p>
-        <!-- Include other book fields -->
-        <p><strong>Series:</strong> {% if book.series %} {{ book.series.name }} {% else %} None {% endif %}</p>
-        <p><strong>Collection:</strong> {% if book.collection %} {{ book.collection[0].name }} {% else %}
-            None {% endif %}</p>
-        <p><strong>Format:</strong> {{ book.format }}</p>
-        <p><strong>Tags:</strong>
-            <span id="tags-container">
-                {% for tag in book.tags %}
-                <span class="tag">
-                    {{ tag.name }}
-                    <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}"
-                        hx-target="#tags-container" class="remove-tag">×</button>
-                </span>
-                {% endfor %}
-            </span>
-        </p>
-        <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container">
-            <input type="text" name="tag_name" placeholder="Add a new tag" required>
-            <button type="submit">Add Tag</button>
-        </form>
-        <p><strong>Publisher:</strong> {% if book.publisher %} {{ book.publisher.name }} {% else %} None {% endif %}
-        </p>
-        <p><strong>Language Code:</strong> {{ book.language_code }}</p>
-        <p><strong>Added At:</strong> {{ book.added_at }}</p>
-        <!-- Add other book details here -->
+                {% if book.file_path %}
+                <button type="button"
+                    hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
+                    class="btn btn-primary mt-4 w-full">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Open
+                </button>
+                {% endif %}
+            </div>
+
+            <div class="min-w-0 flex-1">
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ book.title }}</h1>
+                {% if book.authors %}
+                <p class="mt-1.5 text-slate-600 dark:text-slate-300">{{ book.authors|join(', ', attribute='name') }}</p>
+                {% endif %}
+
+                {% if book.description %}
+                <div class="prose prose-sm mt-4 max-w-none text-slate-600 dark:prose-invert dark:text-slate-300">
+                    {{ book.description|safe }}
+                </div>
+                {% endif %}
+
+                <dl class="mt-6 space-y-2.5 text-sm">
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Edition</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.edition or '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">ISBN</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.isbn or '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Format</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.format or '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Publisher</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.publisher.name if book.publisher else '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Language</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">
+                            {{ book.language.name if book.language else (book.language_code or '—') }}
+                        </dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Series</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.series.name if book.series else '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Collection</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.collection[0].name if book.collection else '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Added</dt>
+                        <dd class="text-slate-800 dark:text-slate-200">{{ book.added_at.strftime('%Y-%m-%d') if book.added_at else '—' }}</dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Links</dt>
+                        <dd class="flex flex-wrap items-center gap-2">
+                            {% if book.amazon_url %}
+                            <a href="{{ book.amazon_url }}" target="_blank" rel="noopener"
+                                class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
+                                Amazon
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                    <path d="M15 3h6v6"/>
+                                    <path d="M10 14 21 3"/>
+                                </svg>
+                            </a>
+                            {% endif %}
+                            {% if book.goodreads_url %}
+                            <a href="{{ book.goodreads_url }}" target="_blank" rel="noopener"
+                                class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
+                                Goodreads
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                    <path d="M15 3h6v6"/>
+                                    <path d="M10 14 21 3"/>
+                                </svg>
+                            </a>
+                            {% endif %}
+                            {% if not book.amazon_url and not book.goodreads_url %}—{% endif %}
+                        </dd>
+                    </div>
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Tags</dt>
+                        <dd>
+                            <span id="tags-container" class="flex flex-wrap items-center gap-1.5">
+                                {% for tag in book.tags %}
+                                <span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium lowercase text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                                    {{ tag.name }}
+                                    <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}"
+                                        hx-target="#tags-container" class="font-bold leading-none text-indigo-400 transition-colors hover:text-red-600"
+                                        title="Remove {{ tag.name }}">×</button>
+                                </span>
+                                {% endfor %}
+                                {% if not book.tags %}<span class="text-slate-400 dark:text-slate-500">—</span>{% endif %}
+                            </span>
+                        </dd>
+                    </div>
+                </dl>
+
+                <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container"
+                    class="mt-4 flex gap-2">
+                    <input type="text" name="tag_name" placeholder="New tag…" required class="input w-40 py-1">
+                    <button type="submit" class="btn btn-secondary py-1">Add tag</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

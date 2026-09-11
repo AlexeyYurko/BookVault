@@ -1,48 +1,69 @@
-<nav class="bg-white border-gray-200 dark:bg-gray-900 fixed top-0 left-0 right-0 z-50">
-    <div class="max-w-screen-xxl flex flex-wrap items-center justify-between mx-auto p-4">
-        <a href="{{ url_for('homepage') }}" class="flex items-center">
-            <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">BookVault</span>
+<nav class="mx-auto max-w-7xl px-4 sm:px-6">
+    <div class="flex h-16 items-center justify-between gap-4">
+        <a href="{{ url_for('homepage') }}" class="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+            </span>
+            BookVault
         </a>
 
-        <!-- Batch Operations - Hidden by default -->
-        <div id="batch-operations" class="hidden flex items-center gap-2">
-            <span class="text-sm text-gray-600">Selected: <span id="selected-count">0</span></span>
-            <select name="action" id="action-select"
-                class="px-2 py-1 text-sm rounded border border-gray-300 bg-white text-gray-700">
-                <option value="update_tags">Update Tags</option>
-                <option value="delete">Delete</option>
-            </select>
-            <input type="text" name="tags" id="tags-input" placeholder="Tags (comma-separated)"
-                class="px-2 py-1 text-sm rounded border border-gray-300 w-40">
-            <button type="button" id="apply-batch-btn"
-                class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-1 px-3 rounded transition duration-300">
-                Apply
-            </button>
-            <button type="button" id="cancel-batch-btn"
-                class="bg-gray-500 hover:bg-gray-600 text-white text-sm font-bold py-1 px-2 rounded transition duration-300">
-                Cancel
+        <div class="flex items-center gap-2">
+            <form hx-get="{{ url_for('search_books') }}" hx-trigger="submit" hx-target="#books-list" hx-push-url="true"
+                class="relative">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="search-navbar" name="query" placeholder="Search books…"
+                    class="input w-36 pl-8 sm:w-56 lg:w-72">
+            </form>
+            <a href="{{ url_for('show_add_books_view') }}" class="btn btn-primary">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                <span class="hidden sm:inline">Add</span>
+            </a>
+            <a href="{{ url_for('sync_books') }}" class="btn btn-secondary">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                <span class="hidden sm:inline">Sync</span>
+            </a>
+            <button type="button" id="theme-toggle" class="icon-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
+                <svg class="h-5 w-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                <svg class="hidden h-5 w-5 dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                </svg>
             </button>
         </div>
+    </div>
 
-        <div class="flex items-center">
-            <div class="relative">
-                <form hx-get="{{ url_for('search_books') }}" hx-trigger="submit" hx-target="#books-list">
-                    <input type="text" id="search-navbar"
-                        class="block w-full p-2 pl-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                        name="query" placeholder="Search...">
-                </form>
-            </div>
-            <ul
-                class="flex flex-col p-4 md:p-0 mt-4 font-medium border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
-                <li>
-                    <a href="{{ url_for('show_add_books_view') }}"
-                        class="block py-2 pl-3 pr-4 ml-2 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Add</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('sync_books') }}"
-                        class="block py-2 pl-3 pr-4 ml-2 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Sync</a>
-                </li>
-            </ul>
-        </div>
+    <!-- Batch operations - hidden until books are selected -->
+    <div id="batch-operations" class="hidden flex flex-wrap items-center gap-2 border-t border-slate-200 py-3 dark:border-slate-700">
+        <span class="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <span id="selected-count">0</span> selected
+        </span>
+        <select name="action" id="action-select" class="input py-1">
+            <option value="update_tags">Update tags</option>
+            <option value="delete">Delete</option>
+        </select>
+        <input type="text" name="tags" id="tags-input" placeholder="Tags (comma-separated)" class="input w-44 py-1">
+        <button type="button" id="apply-batch-btn" class="btn btn-primary py-1">Apply</button>
+        <button type="button" id="cancel-batch-btn" class="btn btn-secondary py-1">Cancel</button>
     </div>
 </nav>
