@@ -1,7 +1,9 @@
 {% for tag in book.tags %}
-<span class="tag">
+<span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium lowercase text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
     {{ tag.name }}
     <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}" hx-target="#tags-container"
-        class="remove-tag">×</button>
+        class="font-bold leading-none text-indigo-400 transition-colors hover:text-red-600"
+        title="Remove {{ tag.name }}">×</button>
 </span>
 {% endfor %}
+{% if not book.tags %}<span class="text-slate-400 dark:text-slate-500">—</span>{% endif %}
