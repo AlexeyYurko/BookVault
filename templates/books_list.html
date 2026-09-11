@@ -4,30 +4,39 @@
             <span class="text-sm font-medium text-gray-700">Tags</span>
             <button id="clear-tags-btn"
                 class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded transition-colors"
-                hx-get="{{ url_for('homepage') }}" hx-target="#books-list">
+                hx-get="{{ url_for('homepage') }}" hx-target="#books-list" hx-push-url="true">
                 Clear Filters
             </button>
         </div>
-        {% for tag in tags %}
-        <a href=""
-            class="inline-block bg-gray-300 hover:bg-gray-400 text-black text-decoration-black py-1 px-1 rounded-lg lowercase text-xs mr-1 mb-1 transition-colors tag-filter"
-            data-tag="{{ tag.name }}" data-url="{{ url_for('show_books_by_tag', tag_name=tag.name) }}">{{ tag.name
-            }}</a>
-        {% endfor %}
+        {% if active_tags|default([]) %}
+        <div class="mb-3">
+            <span class="text-xs font-medium text-gray-700">Selected tags</span>
+            <div class="flex flex-wrap gap-1 mt-1">
+                {% for tag_name in active_tags %}
+                <span class="inline-flex items-center gap-1 bg-blue-500 text-white rounded px-2 py-0.5 lowercase text-xs">
+                    {{ tag_name }}
+                    <button type="button" class="tag-remove font-bold leading-none hover:text-blue-200"
+                        data-tag="{{ tag_name }}" title="Remove {{ tag_name }}">×</button>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="flex flex-wrap">
+            {% for tag in tags %}
+            <a href=""
+                class="inline-block bg-gray-300 hover:bg-gray-400 text-black text-decoration-black py-1 px-1 rounded-lg lowercase text-xs mr-1 mb-1 transition-colors tag-filter"
+                data-tag="{{ tag.name }}">{{ tag.name }}
+            </a>
+            {% else %}
+            <span class="text-xs text-gray-400">No related tags</span>
+            {% endfor %}
+        </div>
     </div>
 
     <div class="mx-2 bg-light rounded-md flex flex-col" style="height: calc(100vh - 120px);">
         <!-- Fixed header outside of scroll container -->
         <div class="flex-shrink-0">
-            <!-- Active filter indicator -->
-            <div id="active-filter" class="hidden px-4 py-2 bg-blue-50 border-b border-blue-200">
-                <div class="flex items-center justify-between">
-                    <span id="filter-text" class="text-sm text-blue-800"></span>
-                    <button type="button" class="text-blue-600 hover:text-blue-800 font-bold"
-                        hx-get="{{ url_for('homepage') }}" hx-target="#books-list">×</button>
-                </div>
-            </div>
-
             <!-- Table header -->
             <div
                 class="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 text-sm font-medium text-gray-700 border-b border-gray-200">
@@ -139,7 +148,6 @@
                         <div class="flex flex-wrap gap-0.5">
                             {% for tag in book.tags[:3]|sort(attribute='name') %}
                             <a href="" data-tag="{{ tag.name }}"
-                                data-url="{{ url_for('show_books_by_tag', tag_name=tag.name) }}"
                                 class="inline-block bg-gray-200 hover:bg-gray-300 rounded px-1 py-0.5 text-[0.6em] leading-none font-medium text-gray-700 cursor-pointer transition-colors tag-filter">
                                 {{ tag.name }}
                             </a>
@@ -206,9 +214,6 @@
 </div>
 
 <script>
-    // Track current active filter
-    let currentFilter = null;
-
     // Batch operations functionality
     function updateBatchOperations() {
         const selectedBoxes = document.querySelectorAll('.book-checkbox:checked');
@@ -285,70 +290,53 @@
         updateBatchOperations();
     });
 
-    // Handle tag filtering with toggle functionality
-    document.addEventListener('click', function (e) {
+    // Tag filtering: selected tags are tracked in the URL (?tags=a,b) and shown
+    // as removable chips; the sidebar only lists related (not selected) tags.
+
+    function getCurrentTags() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('tags');
+        return raw ? raw.split(',').filter(Boolean) : [];
+    }
+
+    function tagFilterUrl(tags) {
+        if (tags.length === 0) {
+            return '{{ url_for("homepage") }}';
+        }
+        return '{{ url_for("filter_books") }}?tags=' + tags.map(encodeURIComponent).join(',');
+    }
+
+    function applyTagFilter(tags) {
+        const url = tagFilterUrl(tags);
+        window.history.pushState({}, '', url);
+        htmx.ajax('GET', url, { target: '#books-list' });
+    }
+
+    function handleTagClicks(e) {
         const tagLink = e.target.closest('.tag-filter');
         if (tagLink) {
             e.preventDefault();
             e.stopPropagation();
-
             const tagName = tagLink.getAttribute('data-tag');
-            const tagUrl = tagLink.getAttribute('data-url');
-
-            // If clicking the same tag that's already active, clear filter
-            if (currentFilter === tagName) {
-                currentFilter = null;
-                htmx.ajax('GET', '{{ url_for("homepage") }}', { target: '#books-list' });
-                hideActiveFilter();
-            } else {
-                currentFilter = tagName;
-                htmx.ajax('GET', tagUrl, { target: '#books-list' });
-                showActiveFilter(tagName);
+            const tags = getCurrentTags();
+            if (!tags.includes(tagName)) {
+                tags.push(tagName);
             }
-
-            updateTagStates();
+            applyTagFilter(tags);
+            return;
         }
-    });
 
-    function showActiveFilter(tagName) {
-        const activeFilter = document.getElementById('active-filter');
-        const filterText = document.getElementById('filter-text');
-        filterText.textContent = `Filtered by: ${tagName}`;
-        activeFilter.classList.remove('hidden');
-    }
-
-    function hideActiveFilter() {
-        const activeFilter = document.getElementById('active-filter');
-        activeFilter.classList.add('hidden');
-    }
-
-    function updateTagStates() {
-        // Update visual state of tags
-        document.querySelectorAll('.tag-filter').forEach(tag => {
-            const tagName = tag.getAttribute('data-tag');
-            if (currentFilter === tagName) {
-                tag.classList.remove('bg-gray-200', 'bg-gray-300', 'hover:bg-gray-300');
-                tag.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-            } else {
-                tag.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
-                tag.classList.add('bg-gray-200', 'hover:bg-gray-300');
-            }
-        });
-    }
-
-    // Clear filter when page loads if no filter is active
-    document.addEventListener('DOMContentLoaded', function () {
-        // Check if we're on a filtered page by looking at URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const pathSegments = window.location.pathname.split('/');
-
-        if (pathSegments.includes('by_tag')) {
-            const tagName = pathSegments[pathSegments.indexOf('by_tag') + 1];
-            if (tagName) {
-                currentFilter = decodeURIComponent(tagName);
-                showActiveFilter(currentFilter);
-                updateTagStates();
-            }
+        const removeLink = e.target.closest('.tag-remove');
+        if (removeLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            const tagName = removeLink.getAttribute('data-tag');
+            applyTagFilter(getCurrentTags().filter(t => t !== tagName));
         }
-    });
+    }
+
+    if (!window.__tagClickHandlerBound) {
+        window.__tagClickHandlerBound = true;
+        document.addEventListener('click', handleTagClicks);
+    }
 </script>
