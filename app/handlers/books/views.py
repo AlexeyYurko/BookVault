@@ -67,6 +67,47 @@ def search_books(  # noqa: PLR0913
     )
 
 
+@router.get("/filter")
+def filter_books(  # noqa: PLR0913
+    request: Request,
+    store: DataStoreDependency,
+    tags: str = Query(default=""),
+    page: int | None = None,
+    per_page: int | None = None,
+    sort_by: str | None = None,
+    order: str | None = None,
+):
+    tag_names = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
+    page, per_page_size = normalize_pagination(page, per_page)
+    sort_by, sort_order = normalize_sort(sort_by, order)
+    books, total, page = store.book_repo.get_books_by_tags(
+        tag_names, page=page, per_page=per_page_size, sort_by=sort_by, order=sort_order
+    )
+    related_tags = store.book_repo.get_related_tags(tag_names)
+    pagination = Pagination(
+        request=request,
+        route_name="filter_books",
+        page=page,
+        per_page=per_page_size,
+        total=total,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        extra_query={"tags": tags},
+    )
+    return templates.TemplateResponse(
+        "books_list.html",
+        {
+            "request": request,
+            "books": books,
+            "tags": related_tags,
+            "active_tags": tag_names,
+            "pagination": pagination,
+            "per_page": per_page_size,
+            "default_per_page": DEFAULT_PER_PAGE,
+        },
+    )
+
+
 @router.get("/add_books")
 def show_add_books_view(request: Request):
     return templates.TemplateResponse("add_books.html", {"request": request})

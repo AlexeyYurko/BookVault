@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.models import Book, BookSeries, Collection, Tag
@@ -80,6 +80,30 @@ class BookRepository(AbstractRepository):
             select(Book).where(where).order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
         ).all()
         return books, total, page
+
+    def get_books_by_tags(
+        self,
+        tag_names: list[str],
+        page: int = 1,
+        per_page: int = 20,
+        sort_by: str = DEFAULT_SORT_BY,
+        order: str = DEFAULT_SORT_ORDER,
+    ) -> tuple[list[Book], int, int]:
+        where = and_(*(Book.tags.any(name=name) for name in tag_names)) if tag_names else None
+        total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
+        page = max(1, min(page, _total_pages(total, per_page)))
+        primary, tiebreaker = _order_clause(sort_by, order)
+        books = self.session.scalars(
+            select(Book).where(where).order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
+        ).all()
+        return books, total, page
+
+    def get_related_tags(self, tag_names: list[str]) -> list[Tag]:
+        stmt = select(Tag).join(Tag.books)
+        if tag_names:
+            stmt = stmt.where(and_(*(Book.tags.any(name=name) for name in tag_names)))
+            stmt = stmt.where(Tag.name.notin_(tag_names))
+        return self.session.scalars(stmt.group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)).all()
 
     def get_all_books(
         self,
