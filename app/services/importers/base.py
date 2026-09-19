@@ -70,11 +70,11 @@ class BookImporter:
     @classmethod
     def get_pipeline(cls):
         return [
+            DeduplicationStep(),
             ExtractMetadataStep(),
             PathTagEnrichmentStep(),
             KeywordEnrichmentStep(),
             EditionExtractionStep(),
-            DeduplicationStep(),
             LanguageResolutionStep(),
             AuthorResolutionStep(),
             PublisherResolutionStep(),

@@ -16,3 +16,34 @@
     z-index: 30;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
 }
+
+/* View mode switching */
+#books-list[data-view="grid"] .list-view {
+    display: none;
+}
+
+#books-list[data-view="list"] .grid-view {
+    display: none;
+}
+
+#books-list[data-view="list"] .list-view {
+    display: block;
+}
+
+/* Line clamp for description in book detail panel */
+.line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Collapsible filter sections */
+.filter-toggle.collapsed svg {
+    transform: rotate(-90deg);
+}
+
+/* Sync confirmation dialog backdrop */
+#sync-dialog::backdrop {
+    background-color: rgba(15, 23, 42, 0.5);
+}

@@ -4,7 +4,8 @@ from fastapi import APIRouter, Request
 from starlette import status
 from starlette.responses import RedirectResponse
 
-from app.handlers.dependencies import DataStoreDependency, SyncServiceDependency
+from app.handlers.dependencies import SyncServiceDependency
+from app.template_utils import templates
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,11 @@ router = APIRouter()
 
 
 @router.get("/sync")
+def sync_confirm(request: Request):
+    return templates.TemplateResponse("sync_confirm.html", {"request": request})
+
+
+@router.post("/sync")
 def sync_books(
     request: Request,
     sync_service: SyncServiceDependency,
