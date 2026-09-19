@@ -39,3 +39,6 @@ class PathImporter:
 
     def process(self, store):
         return self._importer.process(store)
+
+    def resync(self, store, book):
+        return self._importer.resync(store, book)

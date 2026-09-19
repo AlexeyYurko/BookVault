@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
     ForeignKey,
@@ -34,6 +35,7 @@ class Book(Base):
     id: Mapped[int_pk]
     title: Mapped[str] = mapped_column(String, nullable=False, index=True)
     isbn: Mapped[str] = mapped_column(String, nullable=True, index=True)
+    original_isbn: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
     cover: Mapped[str] = mapped_column(String, nullable=True)
     amazon_url: Mapped[str] = mapped_column(String, nullable=True)
@@ -51,6 +53,8 @@ class Book(Base):
 
     checksum: Mapped[str] = mapped_column(String, nullable=True, index=True)
     format: Mapped[str] = mapped_column(String, nullable=True)
+
+    manually_updated_fields: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     tags: Mapped[list["Tag"]] = relationship(secondary="books_tags", back_populates="books")
     authors: Mapped[list["Author"]] = relationship(secondary="books_authors", back_populates="books")  # noqa: F821
