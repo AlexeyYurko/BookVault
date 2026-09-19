@@ -5,7 +5,13 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
-engine = create_engine('sqlite:///./bookvault.db', connect_args={'check_same_thread': False}, echo=False)
+engine = create_engine(
+    'sqlite:///./bookvault.db',
+    connect_args={'check_same_thread': False, 'timeout': 30.0},
+    echo=False,
+)
+
+
 Session = scoped_session(sessionmaker(bind=engine, autoflush=False))
 
 class Base(DeclarativeBase):

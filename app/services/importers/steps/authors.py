@@ -13,11 +13,16 @@ class AuthorResolutionStep(PipelineStep):
         if ctx.metadata is None:
             return ctx
 
+        seen_names = set()
         db_authors = []
         for author_name in ctx.metadata.authors:
             if author_name in [None, ""]:
                 continue
             cleaned_author_name = author_name.strip()
+            normalized = cleaned_author_name.lower()
+            if normalized in seen_names:
+                continue
+            seen_names.add(normalized)
             author = ctx.store.author_repo.get_or_create(name=cleaned_author_name)
             db_authors.append(author)
         ctx.db_authors = db_authors

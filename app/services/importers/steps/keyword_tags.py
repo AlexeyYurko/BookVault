@@ -29,7 +29,12 @@ class KeywordEnrichmentStep(PipelineStep):
         if self._keyword_pattern is None:
             return ctx
 
-        text = " ".join(filter(None, [ctx.metadata.title, ctx.metadata.description])).lower()
+        parts = []
+        if ctx.metadata.title is not None:
+            parts.append(str(ctx.metadata.title))
+        if ctx.metadata.description is not None:
+            parts.append(str(ctx.metadata.description))
+        text = " ".join(parts).lower()
         if not text:
             return ctx
 

@@ -203,6 +203,7 @@
 </div>
 
 <script>
+    (function () {
     // View mode switching
     (function () {
         const container = document.getElementById('books-list');
@@ -257,6 +258,8 @@
     }
 
     // Individual checkbox changes
+    if (!window.__bookActionsBound) {
+    window.__bookActionsBound = true;
     document.addEventListener('change', function (e) {
         if (e.target.classList.contains('book-checkbox')) {
             updateBatchOperations();
@@ -278,6 +281,7 @@
             }
         }
     });
+    }
 
     // Apply batch action
     const applyBatchBtn = document.getElementById('apply-batch-btn');
@@ -374,6 +378,8 @@
 
     // Remember the last book opened in the detail panel so it can be restored
     // when the user returns to the list via the browser back button.
+    if (!window.__bookDetailRestoreBound) {
+    window.__bookDetailRestoreBound = true;
     document.body.addEventListener('htmx:beforeRequest', function (e) {
         const target = e.detail.target;
         if (target && target.id === 'book-detail-panel') {
@@ -383,4 +389,7 @@
             }
         }
     });
+    }
+
+    })();
 </script>
