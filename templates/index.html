@@ -1,6 +1,26 @@
 {% extends 'base.html' %}
 {% block content %}
+    <div id="book-detail-panel" class="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
+        <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center dark:border-slate-700 dark:bg-slate-800/50">
+            <svg class="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            <p class="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Select a book to view details</p>
+        </div>
+    </div>
     <div id="books-list">
         {% include 'books_list.html' %}
     </div>
+
+    <script>
+        (function () {
+            const bookId = sessionStorage.getItem('last-selected-book-id');
+            if (!bookId) return;
+            const panel = document.getElementById('book-detail-panel');
+            if (!panel) return;
+            htmx.ajax('GET', '/books/' + encodeURIComponent(bookId) + '/detail', { target: '#book-detail-panel' });
+        })();
+    </script>
 {% endblock %}

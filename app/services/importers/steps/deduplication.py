@@ -27,15 +27,5 @@ class DeduplicationStep(PipelineStep):
             book.file_path = ctx.importer.file_path
             logger.info("Updated file_path for book %s: %s", book.id, ctx.importer.file_path)
 
-        if ctx.edition and book.edition != ctx.edition:
-            book.edition = ctx.edition
-            logger.info("Updated edition for book %s: %s", book.id, ctx.edition)
-
-        existing_tag_names = {t.name for t in book.tags}
-        for tag_name in ctx.tags:
-            if tag_name not in existing_tag_names:
-                tag = ctx.store.tag_repo.get_or_create(name=tag_name)
-                if tag is not None:
-                    ctx.store.book_repo.add_tag(book, tag)
-
+        logger.info("Skipping duplicate book %s (checksum %s...)", book.id, ctx.checksum[:8])
         return None

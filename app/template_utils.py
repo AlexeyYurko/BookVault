@@ -100,3 +100,20 @@ def normalize_sort(
     by = sort_by if sort_by in SORTABLE_COLUMNS else DEFAULT_SORT_BY
     direction = order if order in ALLOWED_SORT_ORDERS else DEFAULT_SORT_ORDER
     return by, direction
+
+
+FILTER_PARAMS = ("author", "language", "publisher", "series", "format")
+
+
+def extract_filters(params: dict) -> dict:
+    return {key: params.get(key) for key in FILTER_PARAMS if params.get(key)}
+
+
+def build_filter_context(store) -> dict:
+    return {
+        "authors": store.book_repo.get_authors_linked_to_books(),
+        "languages": store.book_repo.get_languages_linked_to_books(),
+        "publishers": store.book_repo.get_publishers_linked_to_books(),
+        "series_list": store.book_repo.get_series_linked_to_books(),
+        "formats": store.book_repo.get_formats_linked_to_books(),
+    }

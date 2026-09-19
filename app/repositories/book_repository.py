@@ -3,6 +3,7 @@ from sqlalchemy.orm import joinedload
 
 from app.models import Book, BookSeries, Collection, Tag
 from app.models.author import Author
+from app.models.language import Language
 from app.models.publishers import Publisher
 from app.repositories.base import AbstractRepository
 
@@ -27,10 +28,45 @@ def _order_clause(sort_by: str, order: str):
     return ordered, Book.id.asc()
 
 
+def _filter_conditions(filters: dict) -> list:
+    conditions = []
+    if filters.get("author"):
+        conditions.append(Book.authors.any(Author.name == filters["author"]))
+    if filters.get("language"):
+        conditions.append(Book.language_code == filters["language"])
+    if filters.get("publisher"):
+        conditions.append(Book.publisher.has(Publisher.name == filters["publisher"]))
+    if filters.get("series"):
+        conditions.append(Book.series.has(BookSeries.name == filters["series"]))
+    if filters.get("format"):
+        conditions.append(Book.format == filters["format"])
+    return conditions
+
+
 class BookRepository(AbstractRepository):
     def get_tags_linked_to_books(self):
         tags_query = select(Tag).join(Tag.books).group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)
-        return self.session.scalars(tags_query).all()
+        return self.session.scalars(tags_query).unique().all()
+
+    def get_authors_linked_to_books(self):
+        query = select(Author).join(Author.books).group_by(Author.id).having(func.count(Book.id) > 0).order_by(Author.name)
+        return self.session.scalars(query).unique().all()
+
+    def get_languages_linked_to_books(self):
+        query = select(Language).join(Language.books).group_by(Language.code).having(func.count(Book.id) > 0).order_by(Language.name)
+        return self.session.scalars(query).unique().all()
+
+    def get_publishers_linked_to_books(self):
+        query = select(Publisher).join(Publisher.books).group_by(Publisher.id).having(func.count(Book.id) > 0).order_by(Publisher.name)
+        return self.session.scalars(query).unique().all()
+
+    def get_series_linked_to_books(self):
+        query = select(BookSeries).join(BookSeries.books).group_by(BookSeries.id).having(func.count(Book.id) > 0).order_by(BookSeries.name)
+        return self.session.scalars(query).unique().all()
+
+    def get_formats_linked_to_books(self):
+        query = select(Book.format).where(Book.format.isnot(None)).group_by(Book.format).order_by(Book.format)
+        return [fmt for (fmt,) in self.session.execute(query).all()]
 
     def get_searched_books(
         self,
@@ -39,6 +75,7 @@ class BookRepository(AbstractRepository):
         per_page: int = 20,
         sort_by: str = DEFAULT_SORT_BY,
         order: str = DEFAULT_SORT_ORDER,
+        filters: dict | None = None,
     ) -> tuple[list[Book], int, int]:
         pattern = f"%{query}%"
         where = or_(
@@ -52,6 +89,9 @@ class BookRepository(AbstractRepository):
             Book.series.has(BookSeries.name.ilike(pattern)),
             Book.collection.has(Collection.name.ilike(pattern)),
         )
+        filter_conditions = _filter_conditions(filters or {})
+        if filter_conditions:
+            where = and_(where, *filter_conditions)
         total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
         page = max(1, min(page, _total_pages(total, per_page)))
         primary, tiebreaker = _order_clause(sort_by, order)
@@ -88,13 +128,21 @@ class BookRepository(AbstractRepository):
         per_page: int = 20,
         sort_by: str = DEFAULT_SORT_BY,
         order: str = DEFAULT_SORT_ORDER,
+        filters: dict | None = None,
     ) -> tuple[list[Book], int, int]:
-        where = and_(*(Book.tags.any(name=name) for name in tag_names)) if tag_names else None
-        total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
+        conditions = [and_(*(Book.tags.any(name=name) for name in tag_names))] if tag_names else []
+        conditions.extend(_filter_conditions(filters or {}))
+        where = and_(*conditions) if conditions else None
+        count_stmt = select(func.count()).select_from(Book)
+        books_stmt = select(Book)
+        if where is not None:
+            count_stmt = count_stmt.where(where)
+            books_stmt = books_stmt.where(where)
+        total = self.session.scalar(count_stmt) or 0
         page = max(1, min(page, _total_pages(total, per_page)))
         primary, tiebreaker = _order_clause(sort_by, order)
         books = self.session.scalars(
-            select(Book).where(where).order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
+            books_stmt.order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
         ).all()
         return books, total, page
 
@@ -103,7 +151,7 @@ class BookRepository(AbstractRepository):
         if tag_names:
             stmt = stmt.where(and_(*(Book.tags.any(name=name) for name in tag_names)))
             stmt = stmt.where(Tag.name.notin_(tag_names))
-        return self.session.scalars(stmt.group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)).all()
+        return self.session.scalars(stmt.group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)).unique().all()
 
     def get_all_books(
         self,
@@ -111,12 +159,20 @@ class BookRepository(AbstractRepository):
         per_page: int = 20,
         sort_by: str = DEFAULT_SORT_BY,
         order: str = DEFAULT_SORT_ORDER,
+        filters: dict | None = None,
     ) -> tuple[list[Book], int, int]:
-        total = self.session.scalar(select(func.count()).select_from(Book)) or 0
+        conditions = _filter_conditions(filters or {})
+        where = and_(*conditions) if conditions else None
+        count_stmt = select(func.count()).select_from(Book)
+        books_stmt = select(Book)
+        if where is not None:
+            count_stmt = count_stmt.where(where)
+            books_stmt = books_stmt.where(where)
+        total = self.session.scalar(count_stmt) or 0
         page = max(1, min(page, _total_pages(total, per_page)))
         primary, tiebreaker = _order_clause(sort_by, order)
         books = self.session.scalars(
-            select(Book).order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
+            books_stmt.order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
         ).all()
         return books, total, page
 

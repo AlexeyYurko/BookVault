@@ -1,0 +1,42 @@
+<div id="books-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    {% for book in books %}
+    <div class="group cursor-pointer book-detail-trigger"
+        data-book-id="{{ book.id }}"
+        hx-get="{{ url_for('book_detail_panel', book_id=book.id) }}"
+        hx-target="#book-detail-panel"
+        hx-swap="innerHTML"
+        hx-trigger="click"
+        onclick="document.getElementById('book-detail-panel').scrollIntoView({behavior:'smooth', block:'start'})">
+        <div class="relative aspect-[2/3] overflow-hidden rounded-md bg-slate-100 shadow-sm ring-1 ring-slate-900/5 transition-shadow group-hover:shadow-md group-hover:ring-indigo-500/30 dark:bg-slate-700">
+            {% if book.cover %}
+            <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="{{ book.title }}"
+                class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]" loading="lazy">
+            {% else %}
+            <div class="flex h-full w-full items-center justify-center">
+                <svg class="h-10 w-10 text-slate-300 dark:text-slate-500" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+            </div>
+            {% endif %}
+        </div>
+        <div class="mt-2">
+            <h3 class="truncate text-sm font-medium text-slate-900 dark:text-white" title="{{ book.title }}">{{ book.title }}</h3>
+            {% if book.authors %}
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full flex flex-col items-center justify-center gap-2 py-12 text-center">
+        <svg class="h-10 w-10 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No books found</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500">Try adjusting your search or filters</p>
+    </div>
+    {% endfor %}
+</div>
