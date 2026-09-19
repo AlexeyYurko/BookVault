@@ -11,10 +11,14 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from sqlalchemy import select
 from starlette import status
 from starlette.responses import RedirectResponse
 
 from app.handlers.dependencies import DataStoreDependency
+from app.models import Book
+from app.models.books import BookSeries
+from app.models.language import Language
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
 from app.template_utils import (
     DEFAULT_PER_PAGE,
@@ -183,6 +187,176 @@ def book_detail_panel(
             detail=f"Book with id={book_id} not found",
         )
     return templates.TemplateResponse("book_detail_panel.html", {"request": request, "book": book})
+
+
+def _book_edit_values(book: Book, form: dict | None = None) -> dict:
+    if form is not None:
+        return {
+            "title": form.get("title", ""),
+            "authors": form.get("author_names", ""),
+            "publisher": form.get("publisher_name", ""),
+            "series": form.get("series_name", ""),
+            "language_code": form.get("language_code", ""),
+            "edition": form.get("edition", ""),
+            "isbn": form.get("isbn", ""),
+            "format": form.get("format", ""),
+            "amazon_url": form.get("amazon_url", ""),
+            "goodreads_url": form.get("goodreads_url", ""),
+            "tags": form.get("tags_str", ""),
+            "description": form.get("description", ""),
+        }
+    return {
+        "title": book.title,
+        "authors": ", ".join(author.name for author in book.authors),
+        "publisher": book.publisher.name if book.publisher else "",
+        "series": book.series.name if book.series else "",
+        "language_code": book.language_code,
+        "edition": book.edition or "",
+        "isbn": book.isbn or "",
+        "format": book.format or "",
+        "amazon_url": book.amazon_url or "",
+        "goodreads_url": book.goodreads_url or "",
+        "tags": ", ".join(tag.name for tag in book.tags),
+        "description": book.description or "",
+    }
+
+
+def _edit_form_context(store) -> dict:
+    return {
+        "languages": store.book_repo.get_all_languages(),
+        "authors": store.author_repo.list_all("name"),
+        "publishers": store.publisher_repo.list_all("name"),
+        "series_list": store.book_repo.get_all_series(),
+        "formats": store.book_repo.get_formats_linked_to_books(),
+    }
+
+
+def _next_url(request: Request, url: str) -> str | None:
+    if url and url.startswith(str(request.base_url)):
+        return url
+    return None
+
+
+@router.get("/{book_id}/edit")
+def edit_book(
+    request: Request,
+    book_id: int,
+    store: DataStoreDependency,
+):
+    book = store.book_repo.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+    return templates.TemplateResponse(
+        "book_edit.html",
+        {
+            "request": request,
+            "book": book,
+            "values": _book_edit_values(book),
+            "next_url": _next_url(request, request.headers.get("referer", "")),
+            **_edit_form_context(store),
+        },
+    )
+
+
+@router.post("/{book_id}/edit")
+def update_book(  # noqa: PLR0913
+    request: Request,
+    book_id: int,
+    store: DataStoreDependency,
+    title: str = Form(...),
+    author_names: str = Form(default=""),
+    publisher_name: str = Form(default=""),
+    series_name: str = Form(default=""),
+    language_code: str = Form(default=""),
+    edition: str = Form(default=""),
+    isbn: str = Form(default=""),
+    format: str = Form(default=""),
+    amazon_url: str = Form(default=""),
+    goodreads_url: str = Form(default=""),
+    tags_str: str = Form(default=""),
+    description: str = Form(default=""),
+    next: str = Form(default=""),
+):
+    book = store.book_repo.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+
+    title = title.strip()
+    language_code = language_code.strip()
+    language = store.session.get(Language, language_code)
+    if not title or language is None:
+        form = {
+            "title": title,
+            "author_names": author_names,
+            "publisher_name": publisher_name,
+            "series_name": series_name,
+            "language_code": language_code,
+            "edition": edition,
+            "isbn": isbn,
+            "format": format,
+            "amazon_url": amazon_url,
+            "goodreads_url": goodreads_url,
+            "tags_str": tags_str,
+            "description": description,
+        }
+        return templates.TemplateResponse(
+            "book_edit.html",
+            {
+                "request": request,
+                "book": book,
+                "values": _book_edit_values(book, form),
+                "error": "Title and language are required.",
+                "next_url": _next_url(request, next),
+                **_edit_form_context(store),
+            },
+        )
+
+    with store.transaction():
+        book.title = title
+        book.isbn = isbn.strip() or None
+        book.edition = edition.strip() or None
+        book.format = format.strip() or None
+        book.amazon_url = amazon_url.strip() or None
+        book.goodreads_url = goodreads_url.strip() or None
+        book.description = description.strip() or None
+        book.language = language
+
+        authors = []
+        seen_authors = set()
+        for author_name in author_names.split(","):
+            cleaned = author_name.strip()
+            if not cleaned or cleaned.lower() in seen_authors:
+                continue
+            seen_authors.add(cleaned.lower())
+            authors.append(store.author_repo.get_or_create(name=cleaned))
+        book.authors = authors
+
+        if publisher_name.strip():
+            book.publisher = store.publisher_repo.get_or_create(name=publisher_name.strip())
+        else:
+            book.publisher = None
+
+        if series_name.strip():
+            series = store.session.scalar(select(BookSeries).where(BookSeries.name == series_name.strip()))
+            if series is None:
+                series = BookSeries(name=series_name.strip())
+                store.session.add(series)
+            book.series = series
+        else:
+            book.series = None
+
+        tags = []
+        for tag_name in tags_str.split(","):
+            cleaned = tag_name.strip().lower()
+            if not cleaned:
+                continue
+            tag = store.tag_repo.get_or_create(name=cleaned)
+            if tag not in tags:
+                tags.append(tag)
+        book.tags = tags
+
+    target = _next_url(request, next) or request.url_for("show_book", book_id=book_id)
+    return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{book_id}/download")
