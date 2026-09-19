@@ -30,3 +30,9 @@ class AbstractRepository[T]:
             self.session.add(obj)
             self.session.flush()
         return obj
+
+    def list_all(self, order_by_column: str | None = None) -> list[T]:
+        query = select(self.model)
+        if order_by_column is not None:
+            query = query.order_by(getattr(self.model, order_by_column))
+        return self.session.scalars(query).unique().all()

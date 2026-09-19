@@ -6,12 +6,11 @@ from app.repositories.base import AbstractRepository
 
 class TagRepository(AbstractRepository):
     def get_or_create(self, *, name: str) -> Tag:
-        existing = self.session.scalars(
+        tag = self.session.scalars(
             select(Tag).where(func.lower(Tag.name) == name.lower()).order_by(Tag.id).limit(1)
         ).first()
-        if existing is not None:
-            return existing
-        tag = self.create(name=name)
-        self.session.add(tag)
-        self.session.flush()
+        if tag is None:
+            tag = self.create(name=name)
+            self.session.add(tag)
+            self.session.flush()
         return tag

@@ -68,6 +68,12 @@ class BookRepository(AbstractRepository):
         query = select(Book.format).where(Book.format.isnot(None)).group_by(Book.format).order_by(Book.format)
         return [fmt for (fmt,) in self.session.execute(query).all()]
 
+    def get_all_languages(self):
+        return self.session.scalars(select(Language).order_by(Language.name)).all()
+
+    def get_all_series(self):
+        return self.session.scalars(select(BookSeries).order_by(BookSeries.name)).all()
+
     def get_searched_books(
         self,
         query: str,
