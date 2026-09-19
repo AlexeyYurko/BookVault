@@ -24,6 +24,8 @@ class BookCreationStep(PipelineStep):
             publisher=ctx.db_publisher,
             description=ctx.metadata.description,
             edition=ctx.edition,
+            isbn=ctx.metadata.isbn,
+            original_isbn=ctx.metadata.original_isbn,
             file_path=ctx.importer.file_path,
         )
         ctx.store.session.flush()

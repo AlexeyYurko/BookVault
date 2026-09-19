@@ -28,6 +28,18 @@
         </div>
         {% endif %}
 
+        {% if notice %}
+        <div class="mt-4 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm
+            {% if notice.is_ok %}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300{% else %}border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300{% endif %}"
+            role="alert">
+            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            <span>{{ notice.message }}</span>
+        </div>
+        {% endif %}
+
         <form method="POST" action="{{ url_for('update_book', book_id=book.id) }}" class="mt-6 flex flex-col gap-8 sm:flex-row">
             {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
@@ -106,6 +118,10 @@
                     <input id="isbn" name="isbn" type="text" value="{{ values.isbn }}" class="input w-full">
                 </div>
                 <div>
+                    <label for="original_isbn" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Original ISBN</label>
+                    <input id="original_isbn" name="original_isbn" type="text" value="{{ values.original_isbn }}" class="input w-full" placeholder="Original edition ISBN, if translated">
+                </div>
+                <div>
                     <label for="format" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Format</label>
                     <input id="format" name="format" type="text" value="{{ values.format }}" list="format-names"
                         class="input w-full">
@@ -130,18 +146,51 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
-                <button type="submit" class="btn btn-primary py-2.5">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                        <path d="M17 21v-8H7v8M7 3v5h8"/>
-                    </svg>
-                    Save changes
-                </button>
-                <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</a>
+<div class="flex items-center gap-3">
+                    <button type="submit" class="btn btn-primary py-2.5">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <path d="M17 21v-8H7v8M7 3v5h8"/>
+                        </svg>
+                        Save changes
+                    </button>
+                    <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</a>
+                </div>
+            </form>
+
+            <div class="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+                <h2 class="text-sm font-semibold text-slate-900 dark:text-white">Resync metadata from file</h2>
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    Re-extract metadata from the stored file{% if book.file_path %}:<code class="break-all text-slate-500 dark:text-slate-400">{{ book.file_path }}</code>{% endif %}
+                </p>
+                <form method="POST" action="{{ url_for('resync_metadata', book_id=book.id) }}" class="mt-3">
+                    <button type="submit" class="btn">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 2v6h-6"/><path d="M21 8a9 9 0 1 0-2.3 5.7"/>
+                        </svg>
+                        Resync metadata
+                    </button>
+                </form>
             </div>
-        </form>
-    </div>
+
+            {% if protected_fields %}
+            <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
+                <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Protected fields</h2>
+                <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                    These were edited manually and will not be overwritten by resync:
+                </p>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                    {% for field in protected_fields %}
+                    <span class="text-xs font-medium text-amber-700 dark:text-amber-200">{{ field }}</span>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="{{ url_for('unprotect_fields', book_id=book.id) }}" class="mt-3">
+                    <button type="submit" class="btn btn-sm text-red-600 dark:text-red-400">Clear protection</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
 </div>
 {% endblock %}

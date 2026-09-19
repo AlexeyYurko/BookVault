@@ -8,10 +8,13 @@ from PyPDF2 import PdfReader
 
 from app.config import settings
 from app.services.importers.base import BookImporter, BookMetadata
+from app.services.importers.isbn import canonical13, extract_isbns, normalize_isbn
 
 logger = logging.getLogger(__name__)
 
 MAX_COVER_DIM = 1600
+
+ISBN_SCAN_PAGES = 5
 
 
 class PdfImporter(BookImporter):
@@ -55,19 +58,46 @@ class PdfImporter(BookImporter):
             description = self._resolve_str(pdf_info.get('/Description')) or self._resolve_str(pdf_info.get('/Subject'))
             authors = [name.strip() for name in self._resolve_str(pdf_info.get('/Author')).split(',') if name.strip()]
             title = self._resolve_str(pdf_info.get('/Title')) or self.file.filename.split('.')[0]
+            publisher = self._resolve_str(pdf_info.get('/Publisher')) or None
+            language = self._resolve_str(pdf_info.get('/Language')) or self._resolve_str(pdf_info.get('/Lang')) or None
         else:
             description = ''
             authors = []
             title = self.file.filename.split('.')[0]
+            publisher = None
+            language = None
+
+        metadata_isbn = normalize_isbn(self._resolve_str(pdf_info.get('/ISBN'))) if pdf_info else None
+        isbns: list[str] = []
+        if metadata_isbn:
+            isbns.append(metadata_isbn)
+        for isbn in self._scan_isbns():
+            if canonical13(isbn) not in {canonical13(existing) for existing in isbns}:
+                isbns.append(isbn)
+
         return BookMetadata(
             authors=authors,
             title=title,
             description=description,
-            publisher=None,
-            languages=None,
+            publisher=publisher,
+            languages=[language] if language else None,
             published_date=None,
             tags=None,
+            isbn=isbns[0] if isbns else None,
+            original_isbn=isbns[1] if len(isbns) > 1 else None,
         )
+
+    def _scan_isbns(self):
+        logger.info('Scanning first %d pages for ISBN: %s', ISBN_SCAN_PAGES, self.file.filename)
+        pdf = pdfium.PdfDocument(self._get_pdf_source())
+        try:
+            text = ''
+            for index in range(min(len(pdf), ISBN_SCAN_PAGES)):
+                page = pdf.get_page(index)
+                text += page.get_textpage().get_text_bounded()
+            return extract_isbns(text)
+        finally:
+            pdf.close()
 
     @staticmethod
     def _resolve_str(value) -> str:

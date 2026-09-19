@@ -15,6 +15,7 @@ from app.services.importers.base import (
     BookMetadata,
 )
 from app.services.importers.exceptions import ImportBookException
+from app.services.importers.isbn import canonical13, extract_isbn_from_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,8 @@ class EpubImporter(BookImporter):
 
         tags = []
 
+        isbns = self._get_isbns()
+
         return BookMetadata(
             authors=authors,
             title=title,
@@ -66,7 +69,9 @@ class EpubImporter(BookImporter):
             publisher=publisher,
             languages=languages,
             published_date=published_date,
-            tags=tags
+            tags=tags,
+            isbn=isbns[0] if isbns else None,
+            original_isbn=isbns[1] if len(isbns) > 1 else None,
         )
 
     def extract_cover(self):
@@ -105,6 +110,22 @@ class EpubImporter(BookImporter):
                 cleaned_authors.append(author)
         authors = cleaned_authors
         return authors
+
+    def _get_isbns(self):
+        seen: set[str] = set()
+        isbns: list[str] = []
+        for identifier in self.book.get_metadata("DC", "identifier"):
+            value = identifier[0]
+            scheme = None
+            for attr_key, attr_value in identifier[1].items():
+                if attr_key.endswith('}scheme') or attr_key == 'scheme':
+                    scheme = attr_value
+                    break
+            isbn = extract_isbn_from_identifier(value, scheme)
+            if isbn and canonical13(isbn) not in seen:
+                seen.add(canonical13(isbn))
+                isbns.append(isbn)
+        return isbns
 
     def _read_ebook(self):
         """Read EPUB — use path directly for local files, temp file for uploads."""

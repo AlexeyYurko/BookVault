@@ -9,7 +9,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "ruff",
-    "isort>=5.13.2",
     "fastapi>=0.115.0",
     "sqlalchemy>=2.0.35",
     "ebooklib>=0.18",

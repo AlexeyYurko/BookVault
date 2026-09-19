@@ -20,6 +20,12 @@ from app.models import Book
 from app.models.books import BookSeries
 from app.models.language import Language
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
+from app.services.metadata_resync import (
+    FIELD_LABELS,
+    mark_fields_updated,
+    reset_field_protection,
+    resync_book_metadata,
+)
 from app.template_utils import (
     DEFAULT_PER_PAGE,
     Pagination,
@@ -34,6 +40,15 @@ ALLOWED_TYPES = {
     "application/pdf": PdfImporter,
     "application/epub+zip": EpubImporter,
     "application/djvu": DjvuImporter,
+}
+
+RESYNC_NOTICES = {
+    "ok": ("Metadata re-synced from file.", True),
+    "no_file": ("No file path stored for this book.", False),
+    "missing_file": ("File not found on disk.", False),
+    "unsupported": ("Unsupported file format for resync.", False),
+    "failed": ("Failed to re-read metadata from the file.", False),
+    "unprotected": ("Field protection cleared.", True),
 }
 
 router = APIRouter()
@@ -199,6 +214,7 @@ def _book_edit_values(book: Book, form: dict | None = None) -> dict:
             "language_code": form.get("language_code", ""),
             "edition": form.get("edition", ""),
             "isbn": form.get("isbn", ""),
+            "original_isbn": form.get("original_isbn", ""),
             "format": form.get("format", ""),
             "amazon_url": form.get("amazon_url", ""),
             "goodreads_url": form.get("goodreads_url", ""),
@@ -213,6 +229,7 @@ def _book_edit_values(book: Book, form: dict | None = None) -> dict:
         "language_code": book.language_code,
         "edition": book.edition or "",
         "isbn": book.isbn or "",
+        "original_isbn": book.original_isbn or "",
         "format": book.format or "",
         "amazon_url": book.amazon_url or "",
         "goodreads_url": book.goodreads_url or "",
@@ -246,16 +263,76 @@ def edit_book(
     book = store.book_repo.get_book_by_id(book_id)
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+
+    resync_code = request.query_params.get("resync")
+    notice = None
+    if resync_code in RESYNC_NOTICES:
+        message, is_ok = RESYNC_NOTICES[resync_code]
+        notice = {"message": message, "is_ok": is_ok}
+
     return templates.TemplateResponse(
         "book_edit.html",
         {
             "request": request,
             "book": book,
             "values": _book_edit_values(book),
+            "notice": notice,
+            "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
             "next_url": _next_url(request, request.headers.get("referer", "")),
             **_edit_form_context(store),
         },
     )
+
+
+@router.post("/{book_id}/resync")
+def resync_metadata(
+    request: Request,
+    book_id: int,
+    store: DataStoreDependency,
+):
+    book = store.book_repo.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+
+    outcome = resync_book_metadata(store, book)
+    url = request.url_for("edit_book", book_id=book_id).include_query_params(resync=outcome or "ok")
+    return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/{book_id}/unprotect")
+def unprotect_fields(
+    request: Request,
+    book_id: int,
+    store: DataStoreDependency,
+):
+    book = store.book_repo.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+
+    with store.transaction():
+        reset_field_protection(book)
+
+    url = request.url_for("edit_book", book_id=book_id).include_query_params(resync="unprotected")
+    return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+def _edited_fields(book: Book, new: dict) -> list[str]:
+    changed = []
+    comparisons = [
+        ("title", new.get("title"), book.title),
+        ("description", new.get("description") or None, book.description),
+        ("isbn", new.get("isbn") or None, book.isbn),
+        ("original_isbn", new.get("original_isbn") or None, book.original_isbn),
+        ("edition", new.get("edition") or None, book.edition),
+        ("language", new.get("language_code"), book.language_code),
+        ("authors", set(new.get("authors") or []), {author.name for author in book.authors}),
+        ("publisher", new.get("publisher") or None, book.publisher.name if book.publisher else None),
+        ("tags", set(new.get("tags") or []), {tag.name for tag in book.tags}),
+    ]
+    for field, new_value, old_value in comparisons:
+        if new_value != old_value:
+            changed.append(field)
+    return changed
 
 
 @router.post("/{book_id}/edit")
@@ -270,6 +347,7 @@ def update_book(  # noqa: PLR0913
     language_code: str = Form(default=""),
     edition: str = Form(default=""),
     isbn: str = Form(default=""),
+    original_isbn: str = Form(default=""),
     format: str = Form(default=""),
     amazon_url: str = Form(default=""),
     goodreads_url: str = Form(default=""),
@@ -293,6 +371,7 @@ def update_book(  # noqa: PLR0913
             "language_code": language_code,
             "edition": edition,
             "isbn": isbn,
+            "original_isbn": original_isbn,
             "format": format,
             "amazon_url": amazon_url,
             "goodreads_url": goodreads_url,
@@ -311,9 +390,25 @@ def update_book(  # noqa: PLR0913
             },
         )
 
+    edited_fields = _edited_fields(
+        book,
+        {
+            "title": title,
+            "description": description.strip(),
+            "isbn": isbn.strip(),
+            "original_isbn": original_isbn.strip(),
+            "edition": edition.strip(),
+            "language_code": language_code,
+            "authors": [name.strip() for name in author_names.split(",") if name.strip()],
+            "publisher": publisher_name.strip(),
+            "tags": [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()],
+        },
+    )
+
     with store.transaction():
         book.title = title
         book.isbn = isbn.strip() or None
+        book.original_isbn = original_isbn.strip() or None
         book.edition = edition.strip() or None
         book.format = format.strip() or None
         book.amazon_url = amazon_url.strip() or None
@@ -354,6 +449,8 @@ def update_book(  # noqa: PLR0913
             if tag not in tags:
                 tags.append(tag)
         book.tags = tags
+
+        mark_fields_updated(book, edited_fields)
 
     target = _next_url(request, next) or request.url_for("show_book", book_id=book_id)
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
@@ -432,6 +529,7 @@ def add_tag(
 
         tag = store.tag_repo.get_or_create(name=tag_name)
         store.book_repo.add_tag(book, tag)
+        mark_fields_updated(book, ["tags"])
 
     return templates.TemplateResponse("tags.html", {"request": request, "book": book})
 
@@ -453,6 +551,7 @@ def remove_tag(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
 
         store.book_repo.remove_tag(book, tag)
+        mark_fields_updated(book, ["tags"])
 
     return templates.TemplateResponse("tags.html", {"request": request, "book": book})
 
@@ -478,5 +577,6 @@ def batch_action(
                     existing_tags = set(book.tags)
                     merged_tags = existing_tags.union(new_tag_objects)
                     book.tags = list(merged_tags)
+                    mark_fields_updated(book, ["tags"])
 
     return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)
