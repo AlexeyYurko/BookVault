@@ -214,7 +214,7 @@
                 const toggle = section.querySelector('.filter-toggle');
                 if (!content || !toggle) return;
 
-                const isCollapsed = state[name] === true;
+                const isCollapsed = state[name] !== false;
                 content.classList.toggle('hidden', isCollapsed);
                 toggle.classList.toggle('collapsed', isCollapsed);
                 toggle.setAttribute('aria-expanded', String(!isCollapsed));

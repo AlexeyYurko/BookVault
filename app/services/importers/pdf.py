@@ -3,12 +3,15 @@ from io import BytesIO
 from pathlib import Path
 
 import pypdfium2 as pdfium
+from PIL import Image
 from PyPDF2 import PdfReader
 
 from app.config import settings
 from app.services.importers.base import BookImporter, BookMetadata
 
 logger = logging.getLogger(__name__)
+
+MAX_COVER_DIM = 1600
 
 
 class PdfImporter(BookImporter):
@@ -37,6 +40,9 @@ class PdfImporter(BookImporter):
         page = pdf.get_page(0)
         cover = page.render(scale=300 / 72, optimize_mode=None).to_pil()
         path = Path(settings.static_path, settings.cover_images_path, filename)
+        if max(cover.width, cover.height) > MAX_COVER_DIM:
+            ratio = MAX_COVER_DIM / max(cover.width, cover.height)
+            cover = cover.resize((int(cover.width * ratio), int(cover.height * ratio)), Image.LANCZOS)
         logger.info(f"Saving {filename}, width {cover.width}, height {cover.height}")
         cover.save(str(path))
         return filename
@@ -46,12 +52,12 @@ class PdfImporter(BookImporter):
         pdf = PdfReader(self._get_pdf_source())
         pdf_info = pdf.metadata
         if pdf_info:
-            description = pdf_info.get('/Description', pdf_info.get('/Subject')) or ''
-            authors = str(pdf_info.get('/Author', '')).split(',')
-            title = pdf_info.get('/Title') or self.file.filename.split('.')[0]
+            description = self._resolve_str(pdf_info.get('/Description')) or self._resolve_str(pdf_info.get('/Subject'))
+            authors = [name.strip() for name in self._resolve_str(pdf_info.get('/Author')).split(',') if name.strip()]
+            title = self._resolve_str(pdf_info.get('/Title')) or self.file.filename.split('.')[0]
         else:
             description = ''
-            authors = ''
+            authors = []
             title = self.file.filename.split('.')[0]
         return BookMetadata(
             authors=authors,
@@ -62,3 +68,14 @@ class PdfImporter(BookImporter):
             published_date=None,
             tags=None,
         )
+
+    @staticmethod
+    def _resolve_str(value) -> str:
+        if value is None:
+            return ''
+        get_object = getattr(value, 'get_object', None)
+        if callable(get_object):
+            value = get_object()
+        if isinstance(value, bytes):
+            return value.decode('utf-8', errors='replace')
+        return str(value)
