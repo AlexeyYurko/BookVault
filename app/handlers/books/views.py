@@ -20,6 +20,7 @@ from app.models import Book
 from app.models.books import BookSeries
 from app.models.language import Language
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
+from app.services.importers.dedup_guard import release, try_claim
 from app.services.metadata_resync import (
     FIELD_LABELS,
     mark_fields_updated,
@@ -169,8 +170,13 @@ def add_books(
         if file_type not in ALLOWED_TYPES:
             continue
         book_importer = ALLOWED_TYPES[file_type](file, tag_set)
-        with store.transaction():
-            book_importer.process(store)
+        if not try_claim(book_importer.checksum):
+            continue
+        try:
+            with store.transaction():
+                book_importer.process(store)
+        finally:
+            release(book_importer.checksum)
     return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -328,6 +334,7 @@ def _edited_fields(book: Book, new: dict) -> list[str]:
         ("authors", set(new.get("authors") or []), {author.name for author in book.authors}),
         ("publisher", new.get("publisher") or None, book.publisher.name if book.publisher else None),
         ("tags", set(new.get("tags") or []), {tag.name for tag in book.tags}),
+        ("format", new.get("format") or None, book.format),
     ]
     for field, new_value, old_value in comparisons:
         if new_value != old_value:
@@ -402,6 +409,7 @@ def update_book(  # noqa: PLR0913
             "authors": [name.strip() for name in author_names.split(",") if name.strip()],
             "publisher": publisher_name.strip(),
             "tags": [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()],
+            "format": format.strip(),
         },
     )
 

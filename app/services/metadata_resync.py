@@ -23,6 +23,7 @@ FIELD_LABELS = {
     "authors": "Authors",
     "publisher": "Publisher",
     "tags": "Tags",
+    "format": "Format",
 }
 
 

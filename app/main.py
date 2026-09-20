@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +9,8 @@ from app.handlers import handlers_router
 from app.logging_config import setup_logging
 
 setup_logging()
+
+Path(settings.static_path, settings.cover_images_path).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title='BookVault')
 app.add_middleware(GZipMiddleware, minimum_size=500)

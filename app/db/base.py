@@ -5,8 +5,10 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
+from app.config import settings
+
 engine = create_engine(
-    'sqlite:///./bookvault.db',
+    settings.database_url,
     connect_args={'check_same_thread': False, 'timeout': 30.0},
     echo=False,
 )

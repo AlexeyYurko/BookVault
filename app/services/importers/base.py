@@ -61,6 +61,10 @@ class BookImporter:
         self._checksum = file_hash.hexdigest()
         return self._checksum
 
+    @property
+    def checksum(self) -> str:
+        return self._calculate_checksum()
+
     @abstractmethod
     def extract_cover(self):
         pass
@@ -137,7 +141,8 @@ class BookImporter:
             book.publisher = ctx.db_publisher
         if "tags" not in protected:
             book.tags = ctx.db_tags
-        book.format = self.FORMAT
+        if "format" not in protected:
+            book.format = self.FORMAT
         book.checksum = ctx.checksum
         book.cover = ctx.cover
         book.file_path = self.file_path

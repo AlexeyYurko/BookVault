@@ -36,6 +36,10 @@ class SyncTask:
                     continue
                 setattr(self, key, value)
 
+    def bump_errors(self, amount: int = 1) -> None:
+        with self._lock:
+            self.errors += amount
+
     def snapshot(self) -> dict:
         with self._lock:
             return {
@@ -54,8 +58,16 @@ class SyncTask:
 # In-memory task registry. Single-process only.
 sync_tasks: dict[str, SyncTask] = {}
 
+MAX_FINISHED_TASKS = 20
 
-def _build_result_message(result) -> str:
+
+def prune_done_tasks() -> None:
+    done_ids = [task_id for task_id, task in list(sync_tasks.items()) if task.done]
+    for task_id in done_ids[:-MAX_FINISHED_TASKS]:
+        del sync_tasks[task_id]
+
+
+def build_result_message(result) -> str:
     parts = [f"Synced: {result.added} added, {result.skipped} skipped"]
     if result.errors:
         parts.append(f"{len(result.errors)} errors")
@@ -73,6 +85,7 @@ async def sync_books(
     sync_service: SyncServiceDependency,
 ):
     logger.info("Sync requested")
+    prune_done_tasks()
     task_id = uuid.uuid4().hex[:12]
     task = SyncTask(task_id=task_id)
     sync_tasks[task_id] = task
@@ -83,12 +96,13 @@ async def sync_books(
     async def _run():
         try:
             result = await asyncio.to_thread(sync_service.run, on_progress=on_progress)
-            message = _build_result_message(result)
+            message = build_result_message(result)
             task.update(done=True, result_message=message)
             logger.info("Redirecting with result: %s", message)
         except Exception:
             logger.exception("Sync task failed")
-            task.update(done=True, errors=task.errors + 1, result_message="Sync failed")
+            task.bump_errors()
+            task.update(done=True, result_message="Sync failed")
 
     asyncio.create_task(_run())
 

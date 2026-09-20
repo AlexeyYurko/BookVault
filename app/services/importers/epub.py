@@ -34,11 +34,15 @@ class EpubImporter(BookImporter):
             logger.info('Failed to import book')
             raise ImportBookException from e
 
-        title = self.book.get_metadata("DC", 'title')[0][0]
+        title = None
+        with contextlib.suppress(IndexError):
+            title = self.book.get_metadata("DC", 'title')[0][0]
+        if not title:
+            title = Path(self.file.filename).stem
 
         extended_title = ''
         with contextlib.suppress(IndexError):
-            extended_title = self.book.get_metadata("DC", 'extended-title')[1][0]
+            extended_title = self.book.get_metadata("DC", 'extended-title')[0][0]
 
         title = title if len(title) >= len(extended_title) else extended_title
 
@@ -92,7 +96,7 @@ class EpubImporter(BookImporter):
                 path = Path(settings.static_path, settings.cover_images_path, filename)
                 cover_image = item.get_content()
                 image = Image.open(BytesIO(cover_image))
-                if image.mode == 'RGBA':
+                if image.mode != 'RGB':
                     image = image.convert('RGB')
                 image.save(str(path))
                 break
@@ -134,6 +138,7 @@ class EpubImporter(BookImporter):
             logger.info('Reading EPUB from path: %s', self.file.filename)
             return epub.read_epub(str(path))
         with NamedTemporaryFile(delete=False) as temp_file:
+            self.file.file.seek(0)
             shutil.copyfileobj(self.file.file, temp_file)
             temp_path = temp_file.name
         try:
