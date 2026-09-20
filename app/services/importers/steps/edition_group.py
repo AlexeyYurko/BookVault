@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from app.models import Book
-from app.services.duplicate_detector import find_similar
+from app.models import Author, Book
+from app.services.duplicate_detector import find_similar, normalize_text
 from app.services.importers.pipeline import PipelineStep
 
 if TYPE_CHECKING:
@@ -40,11 +40,19 @@ class EditionGroupStep(PipelineStep):
     ) -> list[tuple[int, str, list[str]]]:
         if not author_names:
             return []
+        wanted = {normalize_text(name) for name in author_names}
+        author_ids = [
+            author_id
+            for author_id, name in ctx.store.session.query(Author.id, Author.name)
+            if normalize_text(name) in wanted
+        ]
+        if not author_ids:
+            return []
         books = (
             ctx.store.session
             .query(Book)
             .join(Book.authors)
-            .filter(Book.id != exclude_id)
+            .filter(Book.id != exclude_id, Author.id.in_(author_ids))
             .distinct()
             .all()
         )

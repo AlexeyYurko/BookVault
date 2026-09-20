@@ -57,13 +57,13 @@ class PdfImporter(BookImporter):
         if pdf_info:
             description = self._resolve_str(pdf_info.get('/Description')) or self._resolve_str(pdf_info.get('/Subject'))
             authors = [name.strip() for name in self._resolve_str(pdf_info.get('/Author')).split(',') if name.strip()]
-            title = self._resolve_str(pdf_info.get('/Title')) or self.file.filename.split('.')[0]
+            title = self._resolve_str(pdf_info.get('/Title')) or Path(self.file.filename).stem
             publisher = self._resolve_str(pdf_info.get('/Publisher')) or None
             language = self._resolve_str(pdf_info.get('/Language')) or self._resolve_str(pdf_info.get('/Lang')) or None
         else:
             description = ''
             authors = []
-            title = self.file.filename.split('.')[0]
+            title = Path(self.file.filename).stem
             publisher = None
             language = None
 

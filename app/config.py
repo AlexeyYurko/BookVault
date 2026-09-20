@@ -28,12 +28,16 @@ class Environment(enum.StrEnum):
         return self == self.qa
 
 
+DEFAULT_DATABASE_URL = f"sqlite:///{(ENV_DIR_PATH / 'bookvault.db').as_posix()}"
+
+
 class Settings(BaseSettings):
     environment: Environment = Environment.local
     temp_dir: str = "tmp"
     cover_images_path: str = "cover_images"
     static_path: str = "static"
     books_directory: str = ""
+    database_url: str = DEFAULT_DATABASE_URL
 
     model_config = {
         "env_file": [ENV_DIR_PATH / ".env", ENV_DIR_PATH / f".env.{_ENVIRONMENT}"],

@@ -42,3 +42,7 @@ class PathImporter:
 
     def resync(self, store, book):
         return self._importer.resync(store, book)
+
+    @property
+    def checksum(self) -> str:
+        return self._importer.checksum

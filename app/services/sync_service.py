@@ -12,6 +12,7 @@ from app.config import settings
 from app.db import Session
 from app.repositories.data_store import DataStore
 from app.services.directory_scanner import DirectoryScanner
+from app.services.importers.dedup_guard import release, try_claim
 from app.services.importers.filesystem import PathImporter
 
 logger = logging.getLogger(__name__)
@@ -24,14 +25,24 @@ class SyncResult:
     errors: list[str] = field(default_factory=list)
 
 
-class SyncService:
-    def __init__(
-        self,
-        store: DataStore,
-    ):
-        self.store = store
+def resolve_books_dir(result: SyncResult, on_progress: Callable[[dict], None] | None) -> Path | None:
+    books_dir = Path(settings.books_directory) if settings.books_directory else None
+    error = None
+    if books_dir is None:
+        error = "BOOKS_DIRECTORY is not set"
+    elif not books_dir.is_dir():
+        error = f"BOOKS_DIRECTORY does not exist: {books_dir}"
+    if error is not None:
+        logger.error(error)
+        result.errors.append(error)
+        if on_progress:
+            on_progress({"done": True, "errors": 1})
+        return None
+    return books_dir
 
-    def run(
+
+class SyncService:
+    def run(  # noqa: PLR0915
         self,
         max_workers: int | None = None,
         on_progress: Callable[[dict], None] | None = None,
@@ -39,12 +50,8 @@ class SyncService:
         result = SyncResult()
         result_lock = Lock()
 
-        books_dir = Path(settings.books_directory)
-        if not books_dir or not books_dir.is_dir():
-            logger.error("BOOKS_DIRECTORY is not set or does not exist: %s", books_dir)
-            result.errors.append("BOOKS_DIRECTORY is not set or does not exist")
-            if on_progress:
-                on_progress({"done": True, "errors": 1})
+        books_dir = resolve_books_dir(result, on_progress)
+        if books_dir is None:
             return result
 
         logger.info("Sync started, scanning %s", books_dir)
@@ -70,12 +77,19 @@ class SyncService:
 
         def import_one(idx: int, file_path: Path) -> None:
             logger.info("Importing [%d/%d] %s", idx, total, file_path.name)
+            success = False
             try:
                 with Session() as session:
                     store = DataStore(session)
                     importer = PathImporter(file_path, set())
-                    with store.transaction():
-                        success = importer.process(store)
+                    if not try_claim(importer.checksum):
+                        logger.info("Skipping %s: identical file is being imported concurrently", file_path)
+                    else:
+                        try:
+                            with store.transaction():
+                                success = importer.process(store)
+                        finally:
+                            release(importer.checksum)
 
                 with result_lock:
                     if success:

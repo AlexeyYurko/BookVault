@@ -19,10 +19,8 @@ def get_data_store(db_session: Session = Depends(get_db_session)) -> DataStore:
 DataStoreDependency = Annotated[DataStore, Depends(get_data_store)]
 
 
-def get_sync_service(
-    store: DataStoreDependency,
-) -> SyncService:
-    return SyncService(store)
+def get_sync_service() -> SyncService:
+    return SyncService()
 
 
 SyncServiceDependency = Annotated[SyncService, Depends(get_sync_service)]

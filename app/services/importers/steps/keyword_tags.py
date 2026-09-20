@@ -10,24 +10,18 @@ if TYPE_CHECKING:
 
 
 class KeywordEnrichmentStep(PipelineStep):
-    _keyword_cache: list[str] | None = None
-    _keyword_pattern: re.Pattern | None = None
-
     def process(self, ctx: ImportContext) -> ImportContext:
         if ctx.metadata is None:
             return ctx
 
-        if self._keyword_pattern is None:
-            keywords = ctx.store.keyword_tag_repo.get_all_keywords()
-            self._keyword_cache = keywords
-            if keywords:
-                keywords.sort(key=len, reverse=True)
-                self._keyword_pattern = re.compile(
-                    rf"(?<!\w)({'|'.join(re.escape(kw) for kw in keywords)})(?!\w)", re.IGNORECASE
-                )
-
-        if self._keyword_pattern is None:
+        keywords = ctx.store.keyword_tag_repo.get_all_keywords()
+        if not keywords:
             return ctx
+
+        keywords.sort(key=len, reverse=True)
+        keyword_pattern = re.compile(
+            rf"(?<!\w)({'|'.join(re.escape(kw) for kw in keywords)})(?!\w)", re.IGNORECASE
+        )
 
         parts = []
         if ctx.metadata.title is not None:
@@ -38,5 +32,5 @@ class KeywordEnrichmentStep(PipelineStep):
         if not text:
             return ctx
 
-        ctx.tags.update(m.group(0).lower() for m in self._keyword_pattern.finditer(text))
+        ctx.tags.update(m.group(0).lower() for m in keyword_pattern.finditer(text))
         return ctx
