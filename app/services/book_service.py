@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from app.models import BookSeries
+from app.models import Book, BookSeries
 from app.models.language import Language
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
 from app.services.importers.dedup_guard import release, try_claim
@@ -143,6 +143,25 @@ class BookService:
         if book.edition_group_id is None:
             return []
         return self.store.edition_group_repo.books(book.edition_group_id, exclude_book_id=book.id)
+
+    def edition_siblings_map(self, books: list[Book]) -> dict[int, list[Book]]:
+        """Map book id -> its edition group siblings, for a page of books."""
+        group_ids = {book.edition_group_id for book in books if book.edition_group_id}
+        if not group_ids:
+            return {}
+        grouped = self.store.session.scalars(
+            select(Book).where(Book.edition_group_id.in_(group_ids)).order_by(Book.id)
+        ).all()
+        by_group: dict[int, list[Book]] = {}
+        for candidate in grouped:
+            by_group.setdefault(candidate.edition_group_id, []).append(candidate)
+
+        result: dict[int, list[Book]] = {}
+        for book in books:
+            peers = [peer for peer in by_group.get(book.edition_group_id, []) if peer.id != book.id]
+            if peers:
+                result[book.id] = peers
+        return result
 
     def find_link_candidates(self, book: Book, query: str, limit: int = 10) -> list[Book]:
         books, _, _ = self.store.book_repo.get_searched_books(

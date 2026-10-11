@@ -26,6 +26,8 @@
             {% if book.authors %}
             <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
             {% endif %}
+            {% from 'edition_badges.html' import edition_badges %}
+            {{ edition_badges(request, book, edition_siblings[book.id], request.url | string) if edition_siblings and book.id in edition_siblings else '' }}
         </div>
     </div>
     {% else %}

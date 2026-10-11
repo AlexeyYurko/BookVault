@@ -1,0 +1,17 @@
+{% macro edition_badges(request, book, siblings, back) %}
+{% if siblings %}
+<div class="mt-1 flex flex-wrap items-center gap-1">
+    {% for sib in siblings %}
+    <a href="{{ request.url_for('show_book', book_id=sib.id) }}?next={{ back | urlencode }}" title="{{ sib.title }}"
+        onclick="event.stopPropagation()"
+        class="inline-flex items-center rounded border border-slate-200 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
+        {% if sib.language and sib.language_code != book.language_code %}
+        {{ sib.language.name }}{% if sib.format %} · {{ sib.format }}{% endif %}
+        {% else %}
+        {{ sib.format or sib.language_code or 'edition' }}
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}

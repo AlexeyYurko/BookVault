@@ -32,6 +32,7 @@ def homepage(  # noqa: PLR0913
         context={
             "books": books,
             "tags": book_service.get_tags_linked_to_books(),
+            "edition_siblings": book_service.edition_siblings_map(books),
             "active_filters": filters,
             **filter_context,
         },

@@ -68,6 +68,7 @@ def search_books(  # noqa: PLR0913
         context={
             "books": books,
             "tags": collect_book_tags(books),
+            "edition_siblings": book_service.edition_siblings_map(books),
             "active_filters": filters,
             **filter_context,
         },
@@ -108,6 +109,7 @@ def filter_books(  # noqa: PLR0913
             "books": books,
             "tags": related_tags,
             "active_tags": tag_names,
+            "edition_siblings": book_service.edition_siblings_map(books),
             "active_filters": filters,
             **filter_context,
         },
@@ -150,7 +152,18 @@ def show_book(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id={book_id} not found",
         )
-    return templates.TemplateResponse("book_view.html", {"request": request, "book": book, "tags": book.tags, "edition_siblings": book_service.edition_siblings(book)})
+    next_param = request.query_params.get("next") or request.headers.get("referer", "")
+    back_url = str(next_url(request, next_param) or request.url_for("homepage"))
+    return templates.TemplateResponse(
+        "book_view.html",
+        {
+            "request": request,
+            "book": book,
+            "tags": book.tags,
+            "edition_siblings": book_service.edition_siblings(book),
+            "back_url": back_url,
+        },
+    )
 
 
 @router.get("/{book_id}/detail")
@@ -430,6 +443,7 @@ def show_books_by_tag(  # noqa: PLR0913
         context={
             "books": books,
             "tags": collect_book_tags(books),
+            "edition_siblings": book_service.edition_siblings_map(books),
         },
         route_name="show_books_by_tag",
         route_kwargs={"tag_name": tag_name},
