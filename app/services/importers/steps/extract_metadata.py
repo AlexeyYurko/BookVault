@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from app.services.importers.exceptions import ImportBookException
 from app.services.importers.pipeline import PipelineStep
+from app.services.importers.text_utils import clean_description
 
 if TYPE_CHECKING:
     from app.services.importers.context import ImportContext
@@ -23,5 +24,7 @@ class ExtractMetadataStep(PipelineStep):
         if ctx.metadata is None:
             logger.warning("No metadata extracted for %s, skipping", ctx.importer.file)
             return None
+
+        ctx.metadata.description = clean_description(ctx.metadata.description)
 
         return ctx

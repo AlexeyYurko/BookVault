@@ -16,6 +16,7 @@ from app.services.importers.base import (
 )
 from app.services.importers.exceptions import ImportBookException
 from app.services.importers.isbn import canonical13, extract_isbn_from_identifier
+from app.services.importers.text_utils import parse_authors
 
 logger = logging.getLogger(__name__)
 
@@ -104,15 +105,9 @@ class EpubImporter(BookImporter):
         return filename
 
     def _get_authors(self):
-        authors = [contributor[0] for contributor in self.book.get_metadata("DC", "creator")]
-        cleaned_authors = []
-        for author in authors:
-            if ' and ' in author:
-                and_authors = author.split(' and ')
-                cleaned_authors.extend(and_authors)
-            else:
-                cleaned_authors.append(author)
-        authors = cleaned_authors
+        authors = []
+        for contributor in self.book.get_metadata("DC", "creator"):
+            authors.extend(parse_authors(contributor[0]))
         return authors
 
     def _get_isbns(self):

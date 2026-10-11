@@ -6,7 +6,7 @@ authors = [
     { name = "Alexey Yurko", email = "a.yurko@gmail.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "ruff",
     "fastapi>=0.115.0",
