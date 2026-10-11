@@ -128,7 +128,7 @@
 
                                 <!-- Title & Author -->
                                 <div class="col-span-3 min-w-0">
-                                    <a href="{{ url_for('show_book', book_id=book.id) }}"
+                                    <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ request.url | string | urlencode }}"
                                         class="block transition-colors hover:text-indigo-600 dark:hover:text-indigo-400">
                                         <div class="truncate font-medium text-slate-900 dark:text-white">{{ book.title }}</div>
                                         {% if book.authors %}
@@ -154,6 +154,8 @@
                                     {% else %}
                                     <span class="text-xs text-slate-400 dark:text-slate-500">{{ book.language_code or 'Unknown' }}</span>
                                     {% endif %}
+                                    {% from 'edition_badges.html' import edition_badges %}
+                                    {{ edition_badges(request, book, edition_siblings[book.id], request.url | string) if edition_siblings and book.id in edition_siblings else '' }}
                                 </div>
 
                                 <!-- Added Date -->
