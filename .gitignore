@@ -41,6 +41,9 @@ app/config_local.yml
 .venv/
 *.db
 
+# Docker runtime data (database + covers)
+data/
+
 static/cover_images/*.*
 .env
 
