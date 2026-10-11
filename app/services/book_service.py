@@ -139,6 +139,41 @@ class BookService:
     def get_tags_linked_to_books(self) -> list[Tag]:
         return self.store.book_repo.get_tags_linked_to_books()
 
+    def edition_siblings(self, book: Book) -> list[Book]:
+        if book.edition_group_id is None:
+            return []
+        return self.store.edition_group_repo.books(book.edition_group_id, exclude_book_id=book.id)
+
+    def find_link_candidates(self, book: Book, query: str, limit: int = 10) -> list[Book]:
+        books, _, _ = self.store.book_repo.get_searched_books(
+            query, page=1, per_page=limit, sort_by="title", order="asc", filters={}
+        )
+        excluded = {book.id, *(sibling.id for sibling in self.edition_siblings(book))}
+        return [candidate for candidate in books if candidate.id not in excluded]
+
+    def link_edition(self, book: Book, target: Book) -> None:
+        if book.id == target.id:
+            raise ValueError("Cannot link a book to itself")
+        with self.store.transaction():
+            group_id = target.edition_group_id or book.edition_group_id
+            stale_groups = {book.edition_group_id, target.edition_group_id}
+            if group_id is None:
+                group = self.store.edition_group_repo.create(name=min(book.title, target.title, key=len))
+                self.store.session.flush()
+                group_id = group.id
+            book.edition_group_id = group_id
+            target.edition_group_id = group_id
+            self.store.session.flush()
+            for stale_group in stale_groups - {group_id, None}:
+                self.store.edition_group_repo.prune(stale_group)
+
+    def unlink_edition(self, book: Book) -> None:
+        with self.store.transaction():
+            group_id = book.edition_group_id
+            book.edition_group_id = None
+            self.store.session.flush()
+            self.store.edition_group_repo.prune(group_id)
+
     def filter_context(self) -> dict:
         return {
             "authors": self.store.book_repo.get_authors_linked_to_books(),
