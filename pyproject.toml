@@ -6,7 +6,7 @@ authors = [
     { name = "Alexey Yurko", email = "a.yurko@gmail.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "ruff",
     "fastapi>=0.115.0",
@@ -22,6 +22,7 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "alembic>=1.13.0",
     "rapidfuzz>=3.0.0",
+    "httpx>=0.28.1",
 ]
 
 [tool.isort]

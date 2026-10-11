@@ -115,7 +115,18 @@
                 </div>
                 <div>
                     <label for="isbn" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">ISBN</label>
-                    <input id="isbn" name="isbn" type="text" value="{{ values.isbn }}" class="input w-full">
+                    <div class="flex items-center gap-2">
+                        <input id="isbn" name="isbn" type="text" value="{{ values.isbn }}" class="input w-full">
+                        <button type="button" class="icon-btn shrink-0" title="Look up this ISBN online"
+                            onclick="document.getElementById('lookup_query').value = document.getElementById('isbn').value; document.getElementById('lookup-form').submit();">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.35-4.35"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="mt-1.5 text-xs text-slate-400 dark:text-slate-500">Look up by ISBN to pre-fill author, publisher, language and more.</p>
                 </div>
                 <div>
                     <label for="original_isbn" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Original ISBN</label>
@@ -158,6 +169,26 @@
                     <a href="{{ url_for('show_book', book_id=book.id) }}" class="text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</a>
                 </div>
             </form>
+
+            <div class="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+                <h2 class="text-sm font-semibold text-slate-900 dark:text-white">Look up metadata online</h2>
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    Search Google Books or Open Library by ISBN or title and pre-fill the form above.
+                </p>
+                <form method="POST" action="{{ url_for('lookup_metadata', book_id=book.id) }}" id="lookup-form" class="mt-3 flex gap-2">
+                    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+                    <input id="lookup_query" name="query" type="text" value="{{ values.isbn }}"
+                        placeholder="ISBN or title…" class="input w-full">
+                    <button type="submit" class="btn btn-secondary shrink-0">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        Look up
+                    </button>
+                </form>
+            </div>
 
             <div class="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
                 <h2 class="text-sm font-semibold text-slate-900 dark:text-white">Resync metadata from file</h2>
