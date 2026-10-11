@@ -9,6 +9,7 @@ from PyPDF2 import PdfReader
 from app.config import settings
 from app.services.importers.base import BookImporter, BookMetadata
 from app.services.importers.isbn import canonical13, extract_isbns, normalize_isbn
+from app.services.importers.text_utils import parse_authors
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class PdfImporter(BookImporter):
         pdf_info = pdf.metadata
         if pdf_info:
             description = self._resolve_str(pdf_info.get('/Description')) or self._resolve_str(pdf_info.get('/Subject'))
-            authors = [name.strip() for name in self._resolve_str(pdf_info.get('/Author')).split(',') if name.strip()]
+            authors = parse_authors(self._resolve_str(pdf_info.get('/Author')))
             title = self._resolve_str(pdf_info.get('/Title')) or Path(self.file.filename).stem
             publisher = self._resolve_str(pdf_info.get('/Publisher')) or None
             language = self._resolve_str(pdf_info.get('/Language')) or self._resolve_str(pdf_info.get('/Lang')) or None
