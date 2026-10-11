@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -17,12 +18,53 @@ from app.services.importers.filesystem import PathImporter
 
 logger = logging.getLogger(__name__)
 
+MAX_FINISHED_TASKS = 20
+
 
 @dataclass
 class SyncResult:
     added: int = 0
     skipped: int = 0
     errors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SyncTask:
+    task_id: str
+    total: int = 0
+    processed: int = 0
+    added: int = 0
+    skipped: int = 0
+    errors: int = 0
+    current_file: str = ""
+    done: bool = False
+    result_message: str = ""
+    _lock: Lock = field(default_factory=Lock)
+
+    def update(self, **kwargs):
+        with self._lock:
+            for key, value in kwargs.items():
+                if key == "result":
+                    continue
+                setattr(self, key, value)
+
+    def bump_errors(self, amount: int = 1) -> None:
+        with self._lock:
+            self.errors += amount
+
+    def snapshot(self) -> dict:
+        with self._lock:
+            return {
+                "task_id": self.task_id,
+                "total": self.total,
+                "processed": self.processed,
+                "added": self.added,
+                "skipped": self.skipped,
+                "errors": self.errors,
+                "current_file": self.current_file,
+                "done": self.done,
+                "result_message": self.result_message,
+            }
 
 
 def resolve_books_dir(result: SyncResult, on_progress: Callable[[dict], None] | None) -> Path | None:
@@ -42,6 +84,30 @@ def resolve_books_dir(result: SyncResult, on_progress: Callable[[dict], None] | 
 
 
 class SyncService:
+    def __init__(self, max_finished_tasks: int = MAX_FINISHED_TASKS):
+        self._tasks: dict[str, SyncTask] = {}
+        self._max_finished_tasks = max_finished_tasks
+
+    def create_task(self) -> SyncTask:
+        self.prune()
+        task = SyncTask(task_id=uuid.uuid4().hex[:12])
+        self._tasks[task.task_id] = task
+        return task
+
+    def get_task(self, task_id: str) -> SyncTask | None:
+        return self._tasks.get(task_id)
+
+    def prune(self) -> None:
+        done_ids = [task_id for task_id, task in list(self._tasks.items()) if task.done]
+        for task_id in done_ids[: -self._max_finished_tasks]:
+            del self._tasks[task_id]
+
+    def result_message(self, result: SyncResult) -> str:
+        parts = [f"Synced: {result.added} added, {result.skipped} skipped"]
+        if result.errors:
+            parts.append(f"{len(result.errors)} errors")
+        return ", ".join(parts)
+
     def run(  # noqa: PLR0915
         self,
         max_workers: int | None = None,

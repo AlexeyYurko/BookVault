@@ -109,11 +109,45 @@ def extract_filters(params: dict) -> dict:
     return {key: params.get(key) for key in FILTER_PARAMS if params.get(key)}
 
 
-def build_filter_context(store) -> dict:
-    return {
-        "authors": store.book_repo.get_authors_linked_to_books(),
-        "languages": store.book_repo.get_languages_linked_to_books(),
-        "publishers": store.book_repo.get_publishers_linked_to_books(),
-        "series_list": store.book_repo.get_series_linked_to_books(),
-        "formats": store.book_repo.get_formats_linked_to_books(),
-    }
+def collect_book_tags(books) -> list:
+    tags = []
+    for book in books:
+        tags.extend(iter(book.tags))
+    return sorted(set(tags), key=lambda tag: tag.name)
+
+
+def render_book_list(  # noqa: PLR0913
+    request: Request,
+    *,
+    context: dict,
+    route_name: str,
+    page: int,
+    per_page: int,
+    total: int,
+    sort_by: str,
+    sort_order: str,
+    route_kwargs: dict | None = None,
+    extra_query: dict | None = None,
+):
+    pagination = Pagination(
+        request=request,
+        route_name=route_name,
+        page=page,
+        per_page=per_page,
+        total=total,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        route_kwargs=route_kwargs,
+        extra_query=extra_query,
+    )
+    template = "books_list.html" if request.headers.get("hx-request") == "true" else "index.html"
+    return templates.TemplateResponse(
+        template,
+        {
+            "request": request,
+            "pagination": pagination,
+            "per_page": per_page,
+            "default_per_page": DEFAULT_PER_PAGE,
+            **context,
+        },
+    )

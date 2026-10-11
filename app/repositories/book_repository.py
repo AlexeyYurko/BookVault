@@ -74,7 +74,7 @@ class BookRepository(AbstractRepository):
     def get_all_series(self):
         return self.session.scalars(select(BookSeries).order_by(BookSeries.name)).all()
 
-    def get_searched_books(
+    def get_searched_books(  # noqa: PLR0913
         self,
         query: str,
         page: int = 1,
@@ -127,7 +127,7 @@ class BookRepository(AbstractRepository):
         ).all()
         return books, total, page
 
-    def get_books_by_tags(
+    def get_books_by_tags(  # noqa: PLR0913
         self,
         tag_names: list[str],
         page: int = 1,
