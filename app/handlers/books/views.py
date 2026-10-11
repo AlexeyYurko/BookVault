@@ -35,6 +35,12 @@ RESYNC_NOTICES = {
     "unprotected": ("Field protection cleared.", True),
 }
 
+EDITION_NOTICES = {
+    "linked": ("Book linked to another edition.", True),
+    "unlinked": ("Book unlinked from its edition group.", True),
+    "error": ("Could not link the selected book.", False),
+}
+
 router = APIRouter()
 
 
@@ -144,7 +150,7 @@ def show_book(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id={book_id} not found",
         )
-    return templates.TemplateResponse("book_view.html", {"request": request, "book": book, "tags": book.tags})
+    return templates.TemplateResponse("book_view.html", {"request": request, "book": book, "tags": book.tags, "edition_siblings": book_service.edition_siblings(book)})
 
 
 @router.get("/{book_id}/detail")
@@ -184,9 +190,13 @@ def edit_book(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
 
     resync_code = request.query_params.get("resync")
+    edition_code = request.query_params.get("edition")
     notice = None
     if resync_code in RESYNC_NOTICES:
         message, is_ok = RESYNC_NOTICES[resync_code]
+        notice = {"message": message, "is_ok": is_ok}
+    elif edition_code in EDITION_NOTICES:
+        message, is_ok = EDITION_NOTICES[edition_code]
         notice = {"message": message, "is_ok": is_ok}
 
     return templates.TemplateResponse(
@@ -196,6 +206,7 @@ def edit_book(
             "book": book,
             "values": book_service.edit_values(book),
             "notice": notice,
+            "edition_siblings": book_service.edition_siblings(book),
             "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
             "next_url": next_url(request, request.query_params.get("next") or request.headers.get("referer", "")),
             **book_service.edit_form_context(),
@@ -256,6 +267,7 @@ def lookup_metadata(
             "values": result.values,
             "notice": result.notice,
             "error": result.error,
+            "edition_siblings": book_service.edition_siblings(book),
             "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
             "next_url": next_url(request, next) or next_url(request, request.headers.get("referer", "")),
             **book_service.edit_form_context(),
@@ -321,6 +333,62 @@ def update_book(  # noqa: PLR0913
 
     target = next_url(request, next) or request.url_for("show_book", book_id=book_id)
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/{book_id}/editions/search")
+def search_link_candidates(
+    request: Request,
+    book_id: int,
+    book_service: BookServiceDependency,
+    query: str = Query(default=""),
+):
+    book = book_service.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+
+    candidates = book_service.find_link_candidates(book, query)
+    return templates.TemplateResponse(
+        "edition_link_results.html",
+        {"request": request, "book": book, "candidates": candidates},
+    )
+
+
+@router.post("/{book_id}/editions/link")
+def link_edition(
+    request: Request,
+    book_id: int,
+    book_service: BookServiceDependency,
+    target_book_id: int = Form(...),
+):
+    book = book_service.get_book_by_id(book_id)
+    target = book_service.get_book_by_id(target_book_id)
+    if not book or not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+
+    try:
+        book_service.link_edition(book, target)
+        outcome = "linked"
+    except ValueError:
+        outcome = "error"
+
+    url = request.url_for("edit_book", book_id=book_id).include_query_params(edition=outcome)
+    return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/{book_id}/editions/unlink")
+def unlink_edition(
+    request: Request,
+    book_id: int,
+    book_service: BookServiceDependency,
+):
+    book = book_service.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
+
+    book_service.unlink_edition(book)
+
+    url = request.url_for("edit_book", book_id=book_id).include_query_params(edition="unlinked")
+    return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{book_id}/download")

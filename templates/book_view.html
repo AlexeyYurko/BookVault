@@ -42,7 +42,7 @@
                     Open
                 </button>
                 {% endif %}
-                <a href="{{ url_for('edit_book', book_id=book.id, next=back_url) }}" class="btn btn-secondary mt-2 w-full">
+                <a href="{{ url_for('edit_book', book_id=book.id) ~ '?next=' ~ (back_url | urlencode) }}" class="btn btn-secondary mt-2 w-full">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -87,6 +87,20 @@
                             {{ book.language.name if book.language else (book.language_code or '—') }}
                         </dd>
                     </div>
+                    {% if edition_siblings %}
+                    <div class="flex gap-4">
+                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Other editions</dt>
+                        <dd class="flex flex-wrap items-center gap-2">
+                            {% for sibling in edition_siblings %}
+                            <a href="{{ url_for('show_book', book_id=sibling.id) }}"
+                                class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
+                                title="{{ sibling.title }}">
+                                {{ sibling.language.name if sibling.language else (sibling.language_code or '?') }}
+                            </a>
+                            {% endfor %}
+                        </dd>
+                    </div>
+                    {% endif %}
                     <div class="flex gap-4">
                         <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Series</dt>
                         <dd class="text-slate-800 dark:text-slate-200">{{ book.series.name if book.series else '—' }}</dd>

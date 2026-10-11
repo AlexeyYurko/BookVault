@@ -1,0 +1,20 @@
+{% if candidates %}
+<ul class="mt-3 divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-700/60 dark:border-slate-700">
+    {% for candidate in candidates %}
+    <li class="flex items-center justify-between gap-3 px-3 py-2">
+        <div class="min-w-0">
+            <div class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ candidate.title }}</div>
+            <div class="truncate text-xs text-slate-500 dark:text-slate-400">
+                {{ candidate.authors|join(', ', attribute='name') }}{% if candidate.language %} · {{ candidate.language.name }}{% endif %}
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('link_edition', book_id=book.id) }}" class="shrink-0">
+            <input type="hidden" name="target_book_id" value="{{ candidate.id }}">
+            <button type="submit" class="btn btn-secondary btn-sm">Link</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="mt-3 text-xs text-slate-400 dark:text-slate-500">No matching books found.</p>
+{% endif %}
