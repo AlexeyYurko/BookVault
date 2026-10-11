@@ -1,0 +1,24 @@
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+.DS_Store
+
+# Local databases and generated data (provided via volumes at runtime)
+*.db
+*.db-shm
+*.db-wal
+data
+tmp
+
+# Local secrets / config
+.env
+.env.*
+
+# Local-only notes
+PLAN.md
+WORK_PLAN.md
+
+# Covers are stored at runtime, not baked into the image
+static/cover_images
