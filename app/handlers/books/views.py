@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 
 from fastapi import (
@@ -11,9 +10,10 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from fastapi.responses import FileResponse, RedirectResponse
 from starlette import status
-from starlette.responses import RedirectResponse
 
+from app.config import settings
 from app.handlers.dependencies import BookServiceDependency
 from app.services.book_service import EditBookDTO, ImportedFile
 from app.services.metadata_resync import FIELD_LABELS
@@ -418,9 +418,55 @@ def download_book(
     if not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
 
-    # only works when server is on local machine (server and browser share filesystem)
-    subprocess.Popen(["open", str(file_path)])
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # Try to open locally (macOS), otherwise serve as file download
+    try:
+        import sys
+        if sys.platform == "darwin":
+            import subprocess as _subprocess
+            _subprocess.Popen(["/usr/bin/open", str(file_path)])  # noqa: S603
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except Exception:  # noqa: S110
+        pass
+
+    return FileResponse(
+        str(file_path),
+        media_type="application/octet-stream",
+        filename=file_path.name,
+        content_disposition_type="attachment",
+    )
+
+
+@router.get("/{book_id}/file")
+def serve_book_file(
+    request: Request,
+    book_id: int,
+    book_service: BookServiceDependency,
+):
+    book = book_service.get_book_by_id(book_id)
+    if not book or not book.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    file_path = Path(book.file_path)
+    if not file_path.is_absolute():
+        file_path = Path(settings.books_directory) / file_path if settings.books_directory else file_path
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
+
+    if settings.books_directory:
+        books_dir = Path(settings.books_directory).resolve()
+        file_path_resolved = file_path.resolve()
+        try:
+            file_path_resolved.relative_to(books_dir)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied") from None
+
+    return FileResponse(
+        str(file_path),
+        media_type="application/octet-stream",
+        filename=file_path.name,
+        content_disposition_type="inline",
+    )
 
 
 @router.get("/by_tag/{tag_name}")

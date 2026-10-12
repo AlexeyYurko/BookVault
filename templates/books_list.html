@@ -115,7 +115,7 @@
                                     </div>
                                     {% endif %}
                                     {% if book.file_path %}
-                                    <a hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
+                                    <a hx-get="{{ url_for('serve_book_file', book_id=book.id) }}" hx-swap="none"
                                         class="text-slate-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
                                         title="Open file">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
