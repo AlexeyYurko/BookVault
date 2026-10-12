@@ -31,7 +31,7 @@
                 {% endif %}
                 {% if book.file_path %}
                 <button type="button"
-                    hx-get="{{ url_for('download_book', book_id=book.id) }}" hx-swap="none"
+                    hx-get="{{ url_for('serve_book_file', book_id=book.id) }}" hx-swap="none"
                     class="btn btn-primary mt-4 w-full">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
