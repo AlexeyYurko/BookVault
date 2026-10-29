@@ -1,13 +1,27 @@
 # syntax=docker/dockerfile:1
 
+FROM python:3.13-slim AS builder
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+WORKDIR /app
+
+COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
 FROM python:3.13-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
@@ -21,12 +35,7 @@ RUN groupadd --gid 1000 appuser \
     && mkdir -p /app/static/cover_images /tmp/bookvault \
     && chown -R appuser:appuser /app/static /tmp/bookvault
 
-# uv is used to install dependencies from the lock file (pinned for reproducible builds).
-COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /uvx /bin/
-
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+COPY --from=builder /app/.venv /app/.venv
 
 COPY . .
 
