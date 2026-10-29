@@ -1,0 +1,8 @@
+# local development override: builds the image from the working tree instead of
+# pulling it from GHCR.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+services:
+  bookvault:
+    build: .
+    image: bookvault:dev
