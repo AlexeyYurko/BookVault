@@ -1,7 +1,9 @@
 services:
   bookvault:
-    build: .
-    image: bookvault:latest
+    # prebuilt image, published by GitHub Actions on every push to master
+    # to build from local sources instead, add the dev override:
+    #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+    image: ghcr.io/alexeyyurko/bookvault:latest
     container_name: bookvault
     restart: unless-stopped
     ports:

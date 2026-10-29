@@ -55,9 +55,13 @@ dependencies = [
     { name = "pypdfium2" },
     { name = "python-multipart" },
     { name = "rapidfuzz" },
-    { name = "ruff" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -74,10 +78,12 @@ requires-dist = [
     { name = "pypdfium2", specifier = ">=4.30.0" },
     { name = "python-multipart", specifier = ">=0.0.12" },
     { name = "rapidfuzz", specifier = ">=3.0.0" },
-    { name = "ruff" },
     { name = "sqlalchemy", specifier = ">=2.0.35" },
     { name = "uvicorn", specifier = ">=0.31.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ruff" }]
 
 [[package]]
 name = "certifi"
