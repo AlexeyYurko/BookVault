@@ -36,13 +36,14 @@
             crossorigin="anonymous"></script>
     <style type="text/tailwindcss">
         @layer components {
-            .btn { @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900; }
+            .btn { @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900; }
             .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800; }
             .btn-secondary { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700; }
             .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
-            .input { @apply rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-400; }
+            .btn-sm { @apply px-2 py-1 text-xs; }
+            .input { @apply rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder-slate-500 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-indigo-400; }
             .chip { @apply inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200; }
-            .icon-btn { @apply inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200; }
+            .icon-btn { @apply inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-offset-slate-900; }
         }
     </style>
 </head>
@@ -73,13 +74,45 @@
 </div>
 {% endif %}
 
-{% block content %}
-{% endblock %}
+<main id="main-content">
+    {% block content %}
+    {% endblock %}
+</main>
 
 <script>
     document.getElementById('theme-toggle').addEventListener('click', function () {
         const isDark = document.documentElement.classList.toggle('dark');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        window.dispatchEvent(new CustomEvent('bookvault:themechange', { detail: { dark: isDark } }));
+    });
+
+    document.body.addEventListener('htmx:beforeRequest', function (event) {
+        const target = event.detail.target;
+        if (!target) return;
+        target.setAttribute('aria-busy', 'true');
+        if (target.id === 'book-detail-panel') target.classList.remove('hidden');
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function (event) {
+        const target = event.detail.target;
+        if (target) target.removeAttribute('aria-busy');
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        const target = event.detail.target;
+        if (!target) return;
+
+        if (target.id === 'books-list') {
+            const panel = document.getElementById('book-detail-panel');
+            if (panel) {
+                panel.innerHTML = '';
+                panel.classList.add('hidden');
+            }
+            sessionStorage.removeItem('last-selected-book-id');
+            target.focus({ preventScroll: true });
+        } else if (target.id === 'book-detail-panel') {
+            target.focus({ preventScroll: true });
+        }
     });
 </script>
 </body>

@@ -167,7 +167,7 @@
                                         title="Remove {{ tag.name }}">×</button>
                                 </span>
                                 {% endfor %}
-                                {% if not book.tags %}<span class="text-slate-400 dark:text-slate-500">—</span>{% endif %}
+                                {% if not book.tags %}<span class="text-slate-500 dark:text-slate-400">—</span>{% endif %}
                             </span>
                         </dd>
                     </div>
@@ -175,7 +175,8 @@
 
                 <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container"
                     class="mt-4 flex gap-2">
-                    <input type="text" name="tag_name" placeholder="New tag…" required class="input w-40 py-1">
+                    <label for="new-tag" class="sr-only">New tag</label>
+                    <input type="text" id="new-tag" name="tag_name" placeholder="New tag…" required class="input w-40 py-1">
                     <button type="submit" class="btn btn-secondary py-1">Add tag</button>
                 </form>
             </div>

@@ -1,3 +1,4 @@
+{% set current_tags = request.query_params.get('tags', '').split(',') | map('trim') | reject('equalto', '') | list %}
 <div class="mx-auto mt-6 max-w-7xl px-4 sm:px-6">
     <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         {% include 'filters_sidebar.html' %}
@@ -5,7 +6,7 @@
         <div class="flex flex-col gap-4">
             <!-- Toolbar -->
             <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-                <div class="text-sm text-slate-500 dark:text-slate-400">
+                <div class="text-sm text-slate-500 dark:text-slate-400" role="status" aria-live="polite" aria-atomic="true">
                     {% if pagination is defined %}
                     {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
                     {% endif %}
@@ -13,7 +14,7 @@
 
                 <div class="flex items-center gap-2">
                     <div class="inline-flex rounded-md border border-slate-300 bg-white p-0.5 dark:border-slate-600 dark:bg-slate-800">
-                        <button type="button" data-view-mode="grid" aria-label="Grid view"
+                        <button type="button" data-view-mode="grid" aria-label="Grid view" aria-pressed="false"
                             class="view-mode-btn rounded px-2 py-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -23,7 +24,7 @@
                                 <rect x="3" y="14" width="7" height="7"/>
                             </svg>
                         </button>
-                        <button type="button" data-view-mode="list" aria-label="List view"
+                        <button type="button" data-view-mode="list" aria-label="List view" aria-pressed="false"
                             class="view-mode-btn rounded px-2 py-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -55,58 +56,60 @@
             <div class="list-view hidden">
                 <div class="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
                     style="height: calc(100vh - 120px);">
+                    <div class="flex-1 overflow-auto">
+                        <div class="min-w-[56rem]" role="table" aria-label="Books">
                     <!-- Table header -->
-                    <div
-                        class="grid flex-shrink-0 grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
-                        <div class="col-span-1 flex items-center">
-                            <input type="checkbox" id="select-all" class="h-4 w-4 accent-indigo-600" title="Select all">
+                    <div role="row"
+                        class="sticky top-0 z-10 grid flex-shrink-0 grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                        <div class="col-span-1 flex items-center" role="columnheader">
+                            <input type="checkbox" id="select-all" class="h-4 w-4 accent-indigo-600" title="Select all" aria-label="Select all books">
                         </div>
-                        <div class="col-span-1"></div>
-                        <div class="col-span-3">
-                            <a hx-get="{{ pagination.sort_url('title') }}" hx-target="#books-list" hx-push-url="true"
+                        <div class="col-span-1" role="columnheader" aria-label="Cover and file"></div>
+                        <div class="col-span-3" role="columnheader" {% if pagination.is_sorted('title') %}aria-sort="{{ 'descending' if pagination.sort_order == 'desc' else 'ascending' }}"{% endif %}>
+                            <a href="{{ pagination.sort_url('title') }}" hx-get="{{ pagination.sort_url('title') }}" hx-target="#books-list" hx-push-url="true"
                                 class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                                 Title &amp; Author
-                                {% if pagination.is_sorted('title') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                                {% if pagination.is_sorted('title') %}<span aria-hidden="true" class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                             </a>
                         </div>
-                        <div class="col-span-2">
-                            <a hx-get="{{ pagination.sort_url('publisher_id') }}" hx-target="#books-list" hx-push-url="true"
+                        <div class="col-span-2" role="columnheader" {% if pagination.is_sorted('publisher_id') %}aria-sort="{{ 'descending' if pagination.sort_order == 'desc' else 'ascending' }}"{% endif %}>
+                            <a href="{{ pagination.sort_url('publisher_id') }}" hx-get="{{ pagination.sort_url('publisher_id') }}" hx-target="#books-list" hx-push-url="true"
                                 class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                                 Publisher
-                                {% if pagination.is_sorted('publisher_id') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                                {% if pagination.is_sorted('publisher_id') %}<span aria-hidden="true" class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                             </a>
                         </div>
-                        <div class="col-span-1">
-                            <a hx-get="{{ pagination.sort_url('language_code') }}" hx-target="#books-list" hx-push-url="true"
+                        <div class="col-span-1" role="columnheader" {% if pagination.is_sorted('language_code') %}aria-sort="{{ 'descending' if pagination.sort_order == 'desc' else 'ascending' }}"{% endif %}>
+                            <a href="{{ pagination.sort_url('language_code') }}" hx-get="{{ pagination.sort_url('language_code') }}" hx-target="#books-list" hx-push-url="true"
                                 class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                                 Language
-                                {% if pagination.is_sorted('language_code') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                                {% if pagination.is_sorted('language_code') %}<span aria-hidden="true" class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                             </a>
                         </div>
-                        <div class="col-span-2">
-                            <a hx-get="{{ pagination.sort_url('added_at') }}" hx-target="#books-list" hx-push-url="true"
+                        <div class="col-span-2" role="columnheader" {% if pagination.is_sorted('added_at') %}aria-sort="{{ 'descending' if pagination.sort_order == 'desc' else 'ascending' }}"{% endif %}>
+                            <a href="{{ pagination.sort_url('added_at') }}" hx-get="{{ pagination.sort_url('added_at') }}" hx-target="#books-list" hx-push-url="true"
                                 class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
                                 Added
-                                {% if pagination.is_sorted('added_at') %}<span class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                                {% if pagination.is_sorted('added_at') %}<span aria-hidden="true" class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                             </a>
                         </div>
-                        <div class="col-span-2">Tags</div>
+                        <div class="col-span-2" role="columnheader">Tags</div>
                     </div>
 
                     <!-- Scrollable content -->
-                    <div class="flex-1 overflow-y-auto">
-                        <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post">
+                    <div role="rowgroup">
+                        <form id="batch-action-form" action="{{ url_for('batch_action') }}" method="post" role="none">
                             {% for book in books %}
-                            <div
+                            <div role="row"
                                 class="grid grid-cols-12 items-center gap-2 border-b border-slate-100 px-3 py-2 text-sm transition-colors hover:bg-slate-50 dark:border-slate-700/60 dark:hover:bg-slate-700/30">
                                 <!-- Checkbox -->
-                                <div class="col-span-1">
+                                <div class="col-span-1" role="cell">
                                     <input type="checkbox" name="book_ids" value="{{ book.id }}"
-                                        class="book-checkbox h-4 w-4 accent-indigo-600" title="Select {{ book.title }}">
+                                        class="book-checkbox h-4 w-4 accent-indigo-600" title="Select {{ book.title }}" aria-label="Select {{ book.title }}">
                                 </div>
 
                                 <!-- Cover -->
-                                <div class="col-span-1 flex flex-col items-center gap-1">
+                                <div class="col-span-1 flex flex-col items-center gap-1" role="cell">
                                     {% if book.cover %}
                                     <div class="thumbnail_container">
                                         <img class="book_list_thumbnail object-cover h-12 w-8 rounded-sm shadow-sm"
@@ -130,7 +133,7 @@
                                 </div>
 
                                 <!-- Title & Author -->
-                                <div class="col-span-3 min-w-0">
+                                <div class="col-span-3 min-w-0" role="cell">
                                     <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ request.url | string | urlencode }}"
                                         class="block transition-colors hover:text-indigo-600 dark:hover:text-indigo-400">
                                         <div class="truncate font-medium text-slate-900 dark:text-white">{{ book.title }}</div>
@@ -141,60 +144,65 @@
                                 </div>
 
                                 <!-- Publisher -->
-                                <div class="col-span-2 truncate text-xs text-slate-600 dark:text-slate-300">
+                                <div class="col-span-2 truncate text-xs text-slate-600 dark:text-slate-300" role="cell">
                                     {% if book.publisher %}
                                     {{ book.publisher.name }}
                                     {% else %}
-                                    <span class="text-slate-400 dark:text-slate-500">Unknown</span>
+                                    <span class="text-slate-500 dark:text-slate-400">Unknown</span>
                                     {% endif %}
                                 </div>
 
                                 <!-- Language -->
-                                <div class="col-span-1">
+                                <div class="col-span-1" role="cell">
                                     {% if book.language %}
                                     <span class="inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">{{
                                         book.language.name }}</span>
                                     {% else %}
-                                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ book.language_code or 'Unknown' }}</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ book.language_code or 'Unknown' }}</span>
                                     {% endif %}
                                     {% from 'edition_badges.html' import edition_badges %}
                                     {{ edition_badges(request, book, edition_siblings[book.id], request.url | string) if edition_siblings and book.id in edition_siblings else '' }}
                                 </div>
 
                                 <!-- Added Date -->
-                                <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400">
+                                <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400" role="cell">
                                     {{ book.added_at.strftime('%Y-%m-%d') if book.added_at else 'Unknown' }}
                                 </div>
 
                                 <!-- Tags -->
-                                <div class="col-span-2 min-w-0">
+                                <div class="col-span-2 min-w-0" role="cell">
                                     {% if book.tags %}
                                     <div class="flex flex-wrap gap-0.5">
                                         {% for tag in book.tags[:3]|sort(attribute='name') %}
-                                        <a href="" data-tag="{{ tag.name }}"
+                                        {% set updated_tags = (current_tags | reject('equalto', tag.name) | list) if tag.name in current_tags else (current_tags + [tag.name]) %}
+                                        <a href="{{ request.url.include_query_params(tags=updated_tags | join(','), page=1) }}" data-tag="{{ tag.name }}"
                                             class="tag-filter inline-block cursor-pointer rounded bg-slate-100 px-1.5 py-0.5 text-[11px] leading-none font-medium text-slate-600 transition-colors hover:bg-indigo-100 hover:text-indigo-800 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300">
                                             {{ tag.name }}
                                         </a>
                                         {% endfor %}
                                         {% if book.tags|length > 3 %}
-                                        <span class="text-xs text-slate-400 dark:text-slate-500">+{{ book.tags|length - 3 }}</span>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400">+{{ book.tags|length - 3 }}</span>
                                         {% endif %}
                                     </div>
                                     {% endif %}
                                 </div>
                             </div>
                             {% else %}
-                            <div class="flex flex-col items-center justify-center gap-2 p-12 text-center">
-                                <svg class="h-10 w-10 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                                </svg>
-                                <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No books found</p>
-                                <p class="text-xs text-slate-400 dark:text-slate-500">Try adjusting your search or filters</p>
+                            <div role="row">
+                                <div role="cell" aria-colspan="7" class="flex flex-col items-center justify-center gap-2 p-12 text-center">
+                                    <svg class="h-10 w-10 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                    </svg>
+                                    <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No books found</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Try adjusting your search or filters</p>
+                                </div>
                             </div>
                             {% endfor %}
                         </form>
+                    </div>
+                        </div>
                     </div>
 
                     <!-- Pagination footer -->
@@ -230,6 +238,7 @@
         function updateViewButtons(mode) {
             document.querySelectorAll('[data-view-mode]').forEach(btn => {
                 const isActive = btn.dataset.viewMode === mode;
+                btn.setAttribute('aria-pressed', String(isActive));
                 btn.classList.toggle('bg-slate-100', isActive);
                 btn.classList.toggle('text-slate-900', isActive);
                 btn.classList.toggle('dark:bg-slate-700', isActive);
@@ -288,42 +297,58 @@
     });
     }
 
-    // Apply batch action
+    // Apply batch action. The navbar survives HTMX swaps, so bind only once.
     const applyBatchBtn = document.getElementById('apply-batch-btn');
-    if (applyBatchBtn) {
-        applyBatchBtn.addEventListener('click', function () {
+    if (applyBatchBtn && !applyBatchBtn.dataset.bound) {
+        applyBatchBtn.dataset.bound = 'true';
+        applyBatchBtn.addEventListener('click', async function () {
             const action = document.getElementById('action-select').value;
             const selectedBoxes = document.querySelectorAll('.book-checkbox:checked');
             const tags = document.getElementById('tags-input').value;
+            const errorBox = document.getElementById('batch-error');
+            if (!selectedBoxes.length) return;
 
-            if (action === 'delete' && selectedBoxes.length > 0) {
+            if (action === 'delete') {
                 const confirmMessage = `Are you sure you want to delete ${selectedBoxes.length} book(s)?`;
                 if (!confirm(confirmMessage)) return;
             }
 
-            // Create form data
             const formData = new FormData();
             formData.append('action', action);
             formData.append('tags', tags);
             selectedBoxes.forEach(cb => formData.append('book_ids', cb.value));
 
-            // Submit via fetch
-            fetch('{{ url_for("batch_action") }}', {
-                method: 'POST',
-                body: formData
-            }).then(() => {
+            errorBox.classList.add('hidden');
+            applyBatchBtn.disabled = true;
+            applyBatchBtn.setAttribute('aria-busy', 'true');
+            try {
+                const response = await fetch('{{ url_for("batch_action") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) throw new Error('Request failed');
                 window.location.reload();
-            });
+            } catch (error) {
+                errorBox.textContent = 'The batch action could not be completed. Please try again.';
+                errorBox.classList.remove('hidden');
+            } finally {
+                applyBatchBtn.disabled = false;
+                applyBatchBtn.removeAttribute('aria-busy');
+            }
         });
     }
 
     // Cancel batch action
     const cancelBatchBtn = document.getElementById('cancel-batch-btn');
-    if (cancelBatchBtn) {
+    if (cancelBatchBtn && !cancelBatchBtn.dataset.bound) {
+        cancelBatchBtn.dataset.bound = 'true';
         cancelBatchBtn.addEventListener('click', function () {
             document.querySelectorAll('.book-checkbox').forEach(cb => cb.checked = false);
             const selectAll = document.getElementById('select-all');
-            if (selectAll) selectAll.checked = false;
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
             updateBatchOperations();
         });
     }
@@ -338,10 +363,14 @@
     }
 
     function tagFilterUrl(tags) {
-        if (tags.length === 0) {
-            return '{{ url_for("homepage") }}';
+        const url = new URL(window.location.href);
+        if (tags.length) {
+            url.searchParams.set('tags', tags.join(','));
+        } else {
+            url.searchParams.delete('tags');
         }
-        return '{{ url_for("filter_books") }}?tags=' + tags.map(encodeURIComponent).join(',');
+        url.searchParams.delete('page');
+        return url.pathname + url.search;
     }
 
     function applyTagFilter(tags) {

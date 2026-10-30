@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from app.models import BookSeries
+from app.models import Book, BookSeries
 from app.models.language import Language
 from app.repositories.book_repository import DEFAULT_SORT_BY, DEFAULT_SORT_ORDER, Page
-from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
-from app.services.importers.dedup_guard import release, try_claim
 from app.services.importers.isbn import canonical13, normalize_isbn
 from app.services.metadata_lookup import BookMetadata, MetadataLookup
 from app.services.metadata_resync import (
@@ -21,23 +18,8 @@ from app.services.metadata_resync import (
 )
 
 if TYPE_CHECKING:
-    from app.models import Author, Book, Publisher, Tag
+    from app.models import Author, Publisher, Tag
     from app.repositories.data_store import DataStore
-
-logger = logging.getLogger(__name__)
-
-ALLOWED_TYPES = {
-    "application/pdf": PdfImporter,
-    "application/epub+zip": EpubImporter,
-    "application/djvu": DjvuImporter,
-}
-
-
-@dataclass
-class ImportedFile:
-    file: object
-    filename: str
-    content_type: str
 
 
 @dataclass
@@ -193,21 +175,6 @@ class BookService:
             "series_list": self.store.book_repo.get_all_series(),
             "formats": self.store.book_repo.get_formats_linked_to_books(),
         }
-
-    def import_files(self, files: list[ImportedFile], tags: str) -> None:
-        tag_set = {tag.strip() for tag in tags.lower().split(",") if tag.strip()}
-        for file in files:
-            file_type = file.content_type
-            if file_type not in ALLOWED_TYPES:
-                continue
-            book_importer = ALLOWED_TYPES[file_type](file, tag_set)
-            if not try_claim(book_importer.checksum):
-                continue
-            try:
-                with self.transaction():
-                    book_importer.process(self.store)
-            finally:
-                release(book_importer.checksum)
 
     def resync_metadata(self, book: Book) -> str | None:
         return resync_book_metadata(self.store, book)
