@@ -137,7 +137,13 @@
                                 <!-- Title & Author -->
                                 <div class="col-span-3 min-w-0" role="cell">
                                     <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ request.url | string | urlencode }}"
-                                        class="block transition-colors hover:text-indigo-600 dark:hover:text-indigo-400">
+                                        class="book-detail-trigger block cursor-pointer rounded transition-colors hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:text-indigo-400"
+                                        data-book-id="{{ book.id }}"
+                                        hx-get="{{ url_for('book_detail_panel', book_id=book.id) }}"
+                                        hx-target="#book-detail-panel"
+                                        hx-swap="innerHTML"
+                                        hx-trigger="click"
+                                        onclick="if (!window.matchMedia('(min-width: 1280px)').matches) document.getElementById('book-detail-panel').scrollIntoView({behavior:'smooth', block:'start'})">
                                         <div class="truncate font-medium text-slate-900 dark:text-white">{{ book.title }}</div>
                                         {% if book.authors %}
                                         <div class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</div>
