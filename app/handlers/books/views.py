@@ -2,13 +2,11 @@ from pathlib import Path
 
 from fastapi import (
     APIRouter,
-    File,
     Form,
     HTTPException,
     Query,
     Request,
     Response,
-    UploadFile,
 )
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
@@ -21,7 +19,7 @@ from app.handlers.dependencies import (
     ReadableBookDependency,
     TargetBookDependency,
 )
-from app.services.book_service import EditBookDTO, ImportedFile
+from app.services.book_service import EditBookDTO
 from app.services.metadata_resync import FIELD_LABELS
 from app.template_utils import TagSource, render_catalog, templates
 
@@ -65,13 +63,18 @@ def search_books(
     request: Request,
     book_service: BookServiceDependency,
     query: str = Query(default=""),
+    tags: str = Query(default=""),
 ):
+    tag_names = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
+    extra_query = {key: value for key, value in {"query": query, "tags": tags}.items() if value}
     return render_catalog(
         request,
         book_service,
         route_name="search_books",
         query=query,
-        extra_query={"query": query} if query else None,
+        tags=tag_names,
+        tag_source=TagSource.RELATED if tag_names else TagSource.PAGE,
+        extra_query=extra_query,
     )
 
 
@@ -79,34 +82,20 @@ def search_books(
 def filter_books(
     request: Request,
     book_service: BookServiceDependency,
+    query: str = Query(default=""),
     tags: str = Query(default=""),
 ):
     tag_names = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
+    extra_query = {key: value for key, value in {"query": query, "tags": tags}.items() if value}
     return render_catalog(
         request,
         book_service,
         route_name="filter_books",
+        query=query,
         tags=tag_names,
-        tag_source=TagSource.RELATED,
-        extra_query={"tags": tags},
+        tag_source=TagSource.RELATED if tag_names else TagSource.PAGE,
+        extra_query=extra_query,
     )
-
-
-@router.get("/add_books")
-def show_add_books_view(request: Request):
-    return templates.TemplateResponse("add_books.html", {"request": request})
-
-
-@router.post("/add_books")
-def add_books(
-    request: Request,
-    book_service: BookServiceDependency,
-    files: list[UploadFile] = File(),
-    tags: str = Form(default=""),
-):
-    imported = [ImportedFile(file=file.file, filename=file.filename, content_type=file.content_type) for file in files]
-    book_service.import_files(imported, tags)
-    return RedirectResponse(request.url_for("homepage"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{book_id}")

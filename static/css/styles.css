@@ -1,4 +1,4 @@
-/* Cover thumbnail preview: scales up on hover without shifting the layout. */
+/* Subtle cover hover treatment that remains inside the scrollable list. */
 .thumbnail_container {
     position: relative;
     display: inline-block;
@@ -12,9 +12,12 @@
 }
 
 .thumbnail_container:hover .book_list_thumbnail {
-    transform: scale(3.5);
-    z-index: 30;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+    transform: scale(1.08);
+}
+
+.sync-form label:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 /* View mode switching */

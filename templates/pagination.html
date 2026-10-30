@@ -12,7 +12,7 @@
     {% if current < total - 2 %}{% set _ = page_items.append('…') %}{% endif %}
     {% set _ = page_items.append(total) %}
 {% endif %}
-<div class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800/60">
+<nav aria-label="Book pagination" class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800/60">
     <div class="text-slate-500 dark:text-slate-400">
         {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
         &middot;
@@ -21,40 +21,40 @@
 
     <div class="flex items-center gap-1">
         {% if pagination.has_prev %}
-        <a hx-get="{{ pagination.url_for(pagination.page - 1) }}" hx-target="#books-list" hx-push-url="true"
+        <a href="{{ pagination.url_for(pagination.page - 1) }}" hx-get="{{ pagination.url_for(pagination.page - 1) }}" hx-target="#books-list" hx-push-url="true"
             class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Prev</a>
         {% else %}
-        <span class="cursor-not-allowed rounded-md border border-slate-200 bg-slate-100 px-3 py-1 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500">Prev</span>
+        <span aria-disabled="true" class="cursor-not-allowed rounded-md border border-slate-200 bg-slate-100 px-3 py-1 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500">Prev</span>
         {% endif %}
 
         {% for p in page_items %}
             {% if p == current %}
-            <span class="rounded-md border border-indigo-600 bg-indigo-600 px-3 py-1 font-medium text-white">{{ p }}</span>
+            <span aria-current="page" class="rounded-md border border-indigo-600 bg-indigo-600 px-3 py-1 font-medium text-white">{{ p }}</span>
             {% elif p is number %}
-            <a hx-get="{{ pagination.url_for(p) }}" hx-target="#books-list" hx-push-url="true"
-                class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">{{ p }}</a>
+            <a href="{{ pagination.url_for(p) }}" hx-get="{{ pagination.url_for(p) }}" hx-target="#books-list" hx-push-url="true"
+                aria-label="Page {{ p }}" class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">{{ p }}</a>
             {% else %}
-            <span class="px-1 text-slate-400 dark:text-slate-500">{{ p }}</span>
+            <span class="px-1 text-slate-500 dark:text-slate-400">{{ p }}</span>
             {% endif %}
         {% endfor %}
 
         {% if pagination.has_next %}
-        <a hx-get="{{ pagination.url_for(pagination.page + 1) }}" hx-target="#books-list" hx-push-url="true"
+        <a href="{{ pagination.url_for(pagination.page + 1) }}" hx-get="{{ pagination.url_for(pagination.page + 1) }}" hx-target="#books-list" hx-push-url="true"
             class="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">Next</a>
         {% else %}
-        <span class="cursor-not-allowed rounded-md border border-slate-200 bg-slate-100 px-3 py-1 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500">Next</span>
+        <span aria-disabled="true" class="cursor-not-allowed rounded-md border border-slate-200 bg-slate-100 px-3 py-1 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500">Next</span>
         {% endif %}
     </div>
 
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1" aria-label="Books per page">
         <span class="mr-1 text-slate-500 dark:text-slate-400">Per page:</span>
         {% for size in (20, 50, 100) %}
             {% if size == pagination.per_page %}
-            <span class="rounded-md border border-indigo-600 bg-indigo-600 px-2 py-1 font-medium text-white">{{ size }}</span>
+            <span aria-current="true" aria-label="{{ size }} books per page, selected" class="rounded-md border border-indigo-600 bg-indigo-600 px-2 py-1 font-medium text-white">{{ size }}</span>
             {% else %}
-            <a hx-get="{{ pagination.url_for(1, size) }}" hx-target="#books-list" hx-push-url="true"
-                class="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">{{ size }}</a>
+            <a href="{{ pagination.url_for(1, size) }}" hx-get="{{ pagination.url_for(1, size) }}" hx-target="#books-list" hx-push-url="true"
+                aria-label="Show {{ size }} books per page" class="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">{{ size }}</a>
             {% endif %}
         {% endfor %}
     </div>
-</div>
+</nav>
