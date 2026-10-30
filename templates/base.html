@@ -103,11 +103,6 @@
         if (!target) return;
 
         if (target.id === 'books-list') {
-            const panel = document.getElementById('book-detail-panel');
-            if (panel) {
-                panel.innerHTML = '';
-                panel.classList.add('hidden');
-            }
             sessionStorage.removeItem('last-selected-book-id');
             target.focus({ preventScroll: true });
         } else if (target.id === 'book-detail-panel') {
