@@ -39,7 +39,7 @@ wheels = [
 ]
 
 [[package]]
-name = "booksvault"
+name = "bookvault"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
