@@ -46,6 +46,51 @@
     transform: rotate(-90deg);
 }
 
+/* Selectable PDF text layered over the rendered page canvas. */
+.textLayer {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    opacity: 1;
+    line-height: 1;
+    text-align: initial;
+    text-size-adjust: none;
+    forced-color-adjust: none;
+    transform-origin: 0 0;
+    caret-color: CanvasText;
+}
+
+.textLayer :is(span, br) {
+    position: absolute;
+    color: transparent;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0 0;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+    z-index: 1;
+}
+
+.textLayer span.markedContent {
+    top: 0;
+    height: 0;
+}
+
+.textLayer ::selection {
+    background: rgb(59 130 246 / 30%);
+}
+
+.textLayer br::selection {
+    background: transparent;
+}
+
+.hiddenCanvasElement {
+    display: none;
+}
+
 /* Reader fullscreen */
 #reader-root:fullscreen {
     height: 100vh;
