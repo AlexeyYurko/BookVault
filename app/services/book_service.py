@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -79,6 +80,17 @@ class BookService:
 
     def get_book_by_id(self, book_id: int) -> Book | None:
         return self.store.book_repo.get_book_by_id(book_id)
+
+    def save_reading_progress(self, book_id: int, position: str | None, percent: float | None) -> Book | None:
+        book = self.store.book_repo.get_book_by_id(book_id)
+        if book is None:
+            return None
+
+        book.reading_position = position or None
+        book.reading_percent = percent
+        book.reading_updated_at = datetime.now(UTC)
+        self.store.session.commit()
+        return book
 
     def delete_books(self, book_ids: list[int]) -> None:
         self.store.book_repo.delete_books(book_ids)

@@ -11,6 +11,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import FileResponse, RedirectResponse
+from pydantic import BaseModel, Field
 from starlette import status
 
 from app.config import settings
@@ -25,6 +26,23 @@ from app.template_utils import (
     render_book_list,
     templates,
 )
+
+BOOK_MEDIA_TYPES = {
+    ".pdf": "application/pdf",
+    ".epub": "application/epub+zip",
+    ".djvu": "image/vnd.djvu",
+}
+
+READER_FORMATS = {
+    ".pdf": "pdf",
+    ".epub": "epub",
+}
+
+
+class ReadingProgressPayload(BaseModel):
+    position: str | None = Field(default=None, max_length=4000)
+    percent: float | None = Field(default=None, ge=0, le=100)
+
 
 RESYNC_NOTICES = {
     "ok": ("Metadata re-synced from file.", True),
@@ -164,6 +182,48 @@ def show_book(
             "back_url": back_url,
         },
     )
+
+
+@router.get("/{book_id}/read")
+def read_book(
+    request: Request,
+    book_id: int,
+    book_service: BookServiceDependency,
+):
+    book = book_service.get_book_by_id(book_id)
+    if not book or not book.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    reader_format = READER_FORMATS.get(Path(book.file_path).suffix.lower())
+    if reader_format is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This format cannot be read in the browser",
+        )
+
+    return templates.TemplateResponse(
+        "reader.html",
+        {
+            "request": request,
+            "book": book,
+            "reader_format": reader_format,
+        },
+    )
+
+
+@router.put("/{book_id}/progress")
+def save_reading_progress(
+    book_id: int,
+    payload: ReadingProgressPayload,
+    book_service: BookServiceDependency,
+):
+    book = book_service.save_reading_progress(book_id, payload.position, payload.percent)
+    if book is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Book with id={book_id} not found",
+        )
+    return {"status": "ok"}
 
 
 @router.get("/{book_id}/detail")
@@ -441,6 +501,7 @@ def serve_book_file(
     request: Request,
     book_id: int,
     book_service: BookServiceDependency,
+    download: bool = False,
 ):
     book = book_service.get_book_by_id(book_id)
     if not book or not book.file_path:
@@ -461,11 +522,12 @@ def serve_book_file(
         except ValueError:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied") from None
 
+    media_type = BOOK_MEDIA_TYPES.get(file_path.suffix.lower(), "application/octet-stream")
     return FileResponse(
         str(file_path),
-        media_type="application/octet-stream",
+        media_type=media_type,
         filename=file_path.name,
-        content_disposition_type="inline",
+        content_disposition_type="attachment" if download else "inline",
     )
 
 

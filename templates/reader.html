@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ book.title }} — BookVault{% endblock %}
+
+{% block content %}
+<div class="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl flex-col gap-2 px-2 py-2 sm:px-4">
+    <div class="flex items-center gap-2">
+        <a href="{{ url_for('show_book', book_id=book.id) }}" class="btn btn-secondary shrink-0">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+        </a>
+        <div class="min-w-0 flex-1 text-center">
+            <div class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ book.title }}</div>
+            <div id="reader-progress-label" class="text-xs text-slate-500 dark:text-slate-400">0%</div>
+        </div>
+        <a href="{{ url_for('serve_book_file', book_id=book.id) }}?download=1" class="btn btn-secondary shrink-0">
+            Download
+        </a>
+    </div>
+
+    <div id="pdf-toolbar" class="hidden items-center justify-center gap-2 text-sm">
+        <button id="pdf-prev" type="button" class="btn btn-secondary">Prev</button>
+        <span id="pdf-page" class="min-w-24 text-center text-slate-500 dark:text-slate-400">–</span>
+        <button id="pdf-next" type="button" class="btn btn-secondary">Next</button>
+        <span class="mx-2 h-5 w-px bg-slate-200 dark:bg-slate-700"></span>
+        <button id="pdf-zoom-out" type="button" class="btn btn-secondary" aria-label="Zoom out">−</button>
+        <button id="pdf-zoom-in" type="button" class="btn btn-secondary" aria-label="Zoom in">+</button>
+    </div>
+
+    <div id="epub-toolbar" class="hidden items-center justify-center gap-2 text-sm">
+        <button id="epub-prev" type="button" class="btn btn-secondary">Prev</button>
+        <button id="epub-next" type="button" class="btn btn-secondary">Next</button>
+    </div>
+
+    <div id="reader-error"
+        class="hidden rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300"></div>
+
+    <div id="pdf-container"
+        class="hidden flex-1 overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-4 dark:border-slate-700 dark:bg-slate-800">
+        <canvas id="pdf-canvas" class="mx-auto block shadow"></canvas>
+    </div>
+
+    <div id="epub-container"
+        class="hidden flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"></div>
+</div>
+
+<div id="reader-data"
+    data-format="{{ reader_format }}"
+    data-file="{{ url_for('serve_book_file', book_id=book.id) }}"
+    data-progress-url="{{ url_for('save_reading_progress', book_id=book.id) }}"
+    data-position="{{ book.reading_position or '' }}"
+    data-percent="{{ book.reading_percent or 0 }}"></div>
+
+{% if reader_format == 'epub' %}
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+{% endif %}
+
+<script type="module">
+    const data = document.getElementById('reader-data').dataset;
+    const format = data.format;
+    const fileUrl = data.file;
+    const progressUrl = data.progressUrl;
+    const initialPosition = data.position || '';
+    const initialPercent = parseFloat(data.percent) || 0;
+
+    const label = document.getElementById('reader-progress-label');
+    const errorBox = document.getElementById('reader-error');
+
+    let percent = initialPercent;
+
+    function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.remove('hidden');
+    }
+
+    function setPercent(value) {
+        percent = Math.min(100, Math.max(0, value || 0));
+        label.textContent = Math.round(percent) + '%';
+    }
+
+    setPercent(initialPercent);
+
+    let saveTimer = null;
+    let pendingPayload = null;
+
+    function flushProgress() {
+        saveTimer = null;
+        if (!pendingPayload) return;
+        const body = pendingPayload;
+        pendingPayload = null;
+        fetch(progressUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: body,
+            keepalive: true,
+        }).catch(function () { /* progress is best-effort */ });
+    }
+
+    function saveProgress(position, value) {
+        clearTimeout(saveTimer);
+        pendingPayload = JSON.stringify({
+            position: position || null,
+            percent: Math.round(value * 10) / 10,
+        });
+        saveTimer = setTimeout(flushProgress, 800);
+    }
+
+    window.addEventListener('pagehide', flushProgress);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') flushProgress();
+    });
+
+    function showToolbar(id) {
+        const toolbar = document.getElementById(id);
+        toolbar.classList.remove('hidden');
+        toolbar.classList.add('flex');
+    }
+
+    async function initPdf() {
+        const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+        pdfjs.GlobalWorkerOptions.workerSrc =
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+
+        const container = document.getElementById('pdf-container');
+        const canvas = document.getElementById('pdf-canvas');
+        const pageLabel = document.getElementById('pdf-page');
+
+        container.classList.remove('hidden');
+        showToolbar('pdf-toolbar');
+
+        const pdf = await pdfjs.getDocument({ url: fileUrl }).promise;
+        let pageNumber = parseInt(initialPosition, 10);
+        if (!pageNumber || pageNumber < 1 || pageNumber > pdf.numPages) pageNumber = 1;
+
+        let zoom = 1;
+        let rendering = false;
+        let queued = false;
+
+        async function render() {
+            if (rendering) {
+                queued = true;
+                return;
+            }
+            rendering = true;
+            try {
+                const page = await pdf.getPage(pageNumber);
+                const unscaled = page.getViewport({ scale: 1 });
+                const available = Math.max(320, container.clientWidth - 32);
+                const viewport = page.getViewport({ scale: (available / unscaled.width) * zoom });
+                const ratio = window.devicePixelRatio || 1;
+
+                canvas.width = Math.floor(viewport.width * ratio);
+                canvas.height = Math.floor(viewport.height * ratio);
+                canvas.style.width = Math.floor(viewport.width) + 'px';
+                canvas.style.height = Math.floor(viewport.height) + 'px';
+
+                const params = { canvasContext: canvas.getContext('2d'), viewport: viewport };
+                if (ratio !== 1) params.transform = [ratio, 0, 0, ratio, 0, 0];
+                await page.render(params).promise;
+
+                pageLabel.textContent = pageNumber + ' / ' + pdf.numPages;
+                setPercent((pageNumber / pdf.numPages) * 100);
+                saveProgress(String(pageNumber), percent);
+            } catch (error) {
+                showError('Could not render the PDF: ' + error.message);
+            } finally {
+                rendering = false;
+                if (queued) {
+                    queued = false;
+                    render();
+                }
+            }
+        }
+
+        function go(delta) {
+            const next = pageNumber + delta;
+            if (next < 1 || next > pdf.numPages) return;
+            pageNumber = next;
+            render();
+        }
+
+        document.getElementById('pdf-prev').addEventListener('click', function () { go(-1); });
+        document.getElementById('pdf-next').addEventListener('click', function () { go(1); });
+        document.getElementById('pdf-zoom-in').addEventListener('click', function () {
+            zoom = Math.min(3, zoom * 1.2);
+            render();
+        });
+        document.getElementById('pdf-zoom-out').addEventListener('click', function () {
+            zoom = Math.max(0.5, zoom / 1.2);
+            render();
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowRight' || event.key === 'PageDown') go(1);
+            if (event.key === 'ArrowLeft' || event.key === 'PageUp') go(-1);
+        });
+
+        await render();
+    }
+
+    async function initEpub() {
+        const container = document.getElementById('epub-container');
+        container.classList.remove('hidden');
+        showToolbar('epub-toolbar');
+
+        const book = ePub(fileUrl, { openAs: 'epub' });
+        const rendition = book.renderTo(container, { width: '100%', height: '100%', flow: 'paginated' });
+
+        rendition.themes.register('bookvault-dark', {
+            body: { background: '#0f172a', color: '#e2e8f0' },
+            a: { color: '#818cf8' },
+        });
+        if (document.documentElement.classList.contains('dark')) {
+            rendition.themes.select('bookvault-dark');
+        }
+
+        let locationsReady = false;
+        let currentCfi = initialPosition;
+
+        book.ready
+            .then(function () { return book.locations.generate(1000); })
+            .then(function () {
+                locationsReady = true;
+                if (currentCfi) setPercent(book.locations.percentageFromCfi(currentCfi) * 100);
+            })
+            .catch(function () { /* locations are optional */ });
+
+        rendition.on('relocated', function (location) {
+            currentCfi = location.start.cfi;
+            if (locationsReady) {
+                const value = book.locations.percentageFromCfi(currentCfi);
+                if (typeof value === 'number') setPercent(value * 100);
+            }
+            saveProgress(currentCfi, percent);
+        });
+
+        document.getElementById('epub-prev').addEventListener('click', function () { rendition.prev(); });
+        document.getElementById('epub-next').addEventListener('click', function () { rendition.next(); });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowRight' || event.key === 'PageDown') rendition.next();
+            if (event.key === 'ArrowLeft' || event.key === 'PageUp') rendition.prev();
+        });
+
+        try {
+            await rendition.display(initialPosition || undefined);
+        } catch (error) {
+            await rendition.display();
+        }
+    }
+
+    if (format === 'pdf') {
+        initPdf().catch(function (error) { showError('Could not open the PDF: ' + error.message); });
+    } else if (format === 'epub') {
+        initEpub().catch(function (error) { showError('Could not open the EPUB: ' + error.message); });
+    } else {
+        showError('This format cannot be read in the browser.');
+    }
+</script>
+{% endblock %}
