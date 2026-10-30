@@ -180,6 +180,13 @@ def next_url(request: Request, url: str) -> str | None:
     return None
 
 
+def edit_navigation_urls(request: Request, next_param: str = "", back_param: str = "") -> tuple[str | None, str | None]:
+    referer = request.headers.get("referer", "")
+    library_url = next_url(request, next_param) or next_url(request, referer)
+    return_url = next_url(request, back_param) or next_url(request, referer) or library_url
+    return library_url, return_url
+
+
 @router.get("/{book_id}/edit")
 def edit_book(
     request: Request,
@@ -196,6 +203,8 @@ def edit_book(
         message, is_ok = EDITION_NOTICES[edition_code]
         notice = {"message": message, "is_ok": is_ok}
 
+    library_url, return_url = edit_navigation_urls(request, request.query_params.get("next", ""))
+
     return templates.TemplateResponse(
         "book_edit.html",
         {
@@ -205,7 +214,8 @@ def edit_book(
             "notice": notice,
             "edition_siblings": book_service.edition_siblings(book),
             "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
-            "next_url": next_url(request, request.query_params.get("next") or request.headers.get("referer", "")),
+            "next_url": library_url,
+            "return_url": return_url,
             **book_service.edit_form_context(),
         },
     )
@@ -235,14 +245,16 @@ def unprotect_fields(
 
 
 @router.post("/{book_id}/lookup")
-def lookup_metadata(
+def lookup_metadata(  # noqa: PLR0913
     request: Request,
     book: BookDependency,
     book_service: BookServiceDependency,
     query: str = Form(default=""),
     next: str = Form(default=""),
+    back_url: str = Form(default=""),
 ):
     result = book_service.lookup_values(book, query)
+    library_url, return_url = edit_navigation_urls(request, next, back_url)
 
     return templates.TemplateResponse(
         "book_edit.html",
@@ -254,7 +266,8 @@ def lookup_metadata(
             "error": result.error,
             "edition_siblings": book_service.edition_siblings(book),
             "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
-            "next_url": next_url(request, next) or next_url(request, request.headers.get("referer", "")),
+            "next_url": library_url,
+            "return_url": return_url,
             **book_service.edit_form_context(),
         },
     )
@@ -279,6 +292,7 @@ def update_book(  # noqa: PLR0913
     tags_str: str = Form(default=""),
     description: str = Form(default=""),
     next: str = Form(default=""),
+    back_url: str = Form(default=""),
 ):
     dto = EditBookDTO(
         title=title.strip(),
@@ -296,6 +310,7 @@ def update_book(  # noqa: PLR0913
         description=description,
     )
     validation = book_service.validate_edit(dto)
+    library_url, return_url = edit_navigation_urls(request, next, back_url)
 
     if validation.errors:
         return templates.TemplateResponse(
@@ -305,14 +320,17 @@ def update_book(  # noqa: PLR0913
                 "book": book,
                 "values": book_service.edit_values(book, dto),
                 "error": " ".join(validation.errors),
-                "next_url": next_url(request, next),
+                "next_url": library_url,
+                "return_url": return_url,
                 **book_service.edit_form_context(),
             },
         )
 
     book_service.apply_edit(book, dto, validation)
 
-    target = next_url(request, next) or request.url_for("show_book", book_id=book.id)
+    target = request.url_for("show_book", book_id=book.id)
+    if library_url:
+        target = target.include_query_params(next=library_url)
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
 

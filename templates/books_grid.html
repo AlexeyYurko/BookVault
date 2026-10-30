@@ -1,4 +1,4 @@
-<div id="books-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+<div id="books-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
     {% for book in books %}
     <div class="group">
         <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ request.url | string | urlencode }}"
@@ -8,7 +8,7 @@
             hx-target="#book-detail-panel"
             hx-swap="innerHTML"
             hx-trigger="click"
-            onclick="document.getElementById('book-detail-panel').scrollIntoView({behavior:'smooth', block:'start'})">
+            onclick="if (!window.matchMedia('(min-width: 1280px)').matches) document.getElementById('book-detail-panel').scrollIntoView({behavior:'smooth', block:'start'})">
             <div class="relative aspect-[2/3] overflow-hidden rounded-md bg-slate-100 shadow-sm ring-1 ring-slate-900/5 transition-shadow group-hover:shadow-md group-hover:ring-indigo-500/30 dark:bg-slate-700">
                 {% if book.cover %}
                 <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="{{ book.title }}"

@@ -4,13 +4,13 @@
 
 {% block content %}
 <div class="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-    <a href="{{ url_for('show_book', book_id=book.id) }}{{ ('?next=' ~ (next_url | urlencode)) if next_url else '' }}"
+    <a href="{{ return_url or url_for('show_book', book_id=book.id) }}"
         class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
         </svg>
-        Back to book
+        Back
     </a>
 
     <div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
@@ -42,6 +42,7 @@
 
         <form method="POST" action="{{ url_for('update_book', book_id=book.id) }}" class="mt-6 flex flex-col gap-8 sm:flex-row">
             {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+            {% if return_url %}<input type="hidden" name="back_url" value="{{ return_url }}">{% endif %}
 
             <div class="shrink-0 sm:w-48">
                 {% if book.cover %}
@@ -166,7 +167,7 @@
                         </svg>
                         Save changes
                     </button>
-                    <a href="{{ url_for('show_book', book_id=book.id) }}{{ ('?next=' ~ (next_url | urlencode)) if next_url else '' }}" class="text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</a>
+                    <a href="{{ return_url or url_for('show_book', book_id=book.id) }}" class="text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</a>
                 </div>
             </form>
 
@@ -177,6 +178,7 @@
                 </p>
                 <form method="POST" action="{{ url_for('lookup_metadata', book_id=book.id) }}" id="lookup-form" class="mt-3 flex gap-2">
                     {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+                    {% if return_url %}<input type="hidden" name="back_url" value="{{ return_url }}">{% endif %}
                     <label for="lookup_query" class="sr-only">ISBN or title to look up</label>
                     <input id="lookup_query" name="query" type="text" value="{{ values.isbn }}"
                         placeholder="ISBN or title…" class="input w-full">

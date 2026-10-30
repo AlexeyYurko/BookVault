@@ -1,11 +1,9 @@
 {% set current_tags = request.query_params.get('tags', '').split(',') | map('trim') | reject('equalto', '') | list %}
 <div class="mx-auto mt-6 max-w-7xl px-4 sm:px-6">
-    <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        {% include 'filters_sidebar.html' %}
-
-        <div class="flex flex-col gap-4">
+    <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_360px]">
+        <div class="flex flex-col gap-4 lg:sticky lg:top-20 lg:h-fit lg:max-h-[calc(100vh-6rem)]">
             <!-- Toolbar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
                 <div class="text-sm text-slate-500 dark:text-slate-400" role="status" aria-live="polite" aria-atomic="true">
                     {% if pagination is defined %}
                     {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
@@ -40,6 +38,10 @@
                 </div>
             </div>
 
+            {% include 'filters_sidebar.html' %}
+        </div>
+
+        <div class="flex min-w-0 flex-col gap-4">
             <!-- Grid view -->
             <div class="grid-view">
                 <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -210,6 +212,19 @@
                     {% include 'pagination.html' %}
                     {% endif %}
                 </div>
+            </div>
+        </div>
+
+        <div id="book-detail-panel"
+            class="order-first scroll-mt-20 focus:outline-none lg:order-none lg:col-start-2 xl:sticky xl:top-20 xl:col-start-auto xl:h-fit xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto"
+            tabindex="-1" aria-label="Selected book details" aria-live="polite">
+            <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center dark:border-slate-700 dark:bg-slate-800/50">
+                <svg class="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <p class="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Select a book to view details</p>
             </div>
         </div>
     </div>
