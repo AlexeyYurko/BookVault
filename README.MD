@@ -47,17 +47,6 @@ It applies database migrations on start and serves the app on port 8000.
 
 To update, run the same two commands again.
 
-The first published container package is **private by default**, even for a public
-repository. Either set its visibility to public once in the package settings
-(*Packages → bookvault → Package settings → Change visibility*), or log in on the
-host before pulling:
-
-```sh
-echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
-```
-
-where `GHCR_TOKEN` is a personal access token with the `read:packages` scope.
-
 ### Building locally
 
 To build from the working tree instead of pulling the published image:
