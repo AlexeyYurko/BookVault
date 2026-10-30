@@ -41,7 +41,9 @@ It applies database migrations on start and serves the app on port 8000.
    docker compose up -d
    ```
 
-3. Open http://localhost:8000 and press **Sync** to index the folder.
+3. Open http://localhost:8000 and press **Sync** to index the folder. Pick the
+   first-level folders to scan, or leave **All folders** checked to sync the
+   whole library.
 
 To update, run the same two commands again.
 

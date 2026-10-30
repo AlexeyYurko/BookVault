@@ -29,7 +29,7 @@
                 </svg>
                 <span class="hidden sm:inline">Add</span>
             </a>
-            <button type="button" onclick="document.getElementById('sync-dialog').showModal()" class="btn btn-secondary">
+            <button type="button" id="sync-open" onclick="document.getElementById('sync-dialog').showModal()" class="btn btn-secondary">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M23 4v6h-6"/>
@@ -81,6 +81,46 @@
     });
 </script>
 
+<script>
+    // Keep the sync form honest: "All folders" disables the per-folder checkboxes
+    // (disabled inputs are not submitted), and the submit button stays disabled
+    // until there is a selection or the folder list failed to load.
+    (function () {
+        function update(form) {
+            if (!form) return;
+
+            const all = form.querySelector('.sync-all');
+            const folders = Array.from(form.querySelectorAll('.sync-folder'));
+            const submit = form.querySelector('[data-sync-submit]');
+            if (!submit) return;
+
+            folders.forEach(function (box) {
+                box.disabled = all ? all.checked : false;
+            });
+
+            const hasSelection = (all && all.checked) || folders.some(function (box) {
+                return box.checked;
+            });
+            submit.disabled = !hasSelection || Boolean(form.querySelector('[data-sync-error]'));
+        }
+
+        document.addEventListener('change', function (event) {
+            const form = event.target.closest ? event.target.closest('.sync-form') : null;
+            if (form) update(form);
+        });
+
+        document.addEventListener('htmx:afterSwap', function (event) {
+            if (event.target && event.target.id === 'sync-form-body') {
+                update(event.target.closest('.sync-form'));
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.sync-form').forEach(update);
+        });
+    })();
+</script>
+
 <dialog id="sync-dialog" class="m-auto max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/50 dark:border-slate-700 dark:bg-slate-800">
     <div class="p-6">
         <div class="mb-4 flex items-center gap-3">
@@ -94,23 +134,31 @@
                 </svg>
             </div>
             <div>
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Synchronize library?</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">This will scan the configured books directory and add any new files.</p>
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Synchronize library</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Pick the folders to scan, or sync the whole library.</p>
             </div>
         </div>
 
-        <form action="{{ url_for('sync_books') }}" method="post" class="flex flex-col gap-3 sm:flex-row-reverse">
-            <button type="submit" class="btn btn-primary w-full">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M23 4v6h-6"/>
-                    <path d="M1 20v-6h6"/>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
-                    <path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                </svg>
-                Sync now
-            </button>
-            <button type="button" onclick="document.getElementById('sync-dialog').close()" class="btn btn-secondary w-full">Cancel</button>
+        <form action="{{ url_for('sync_books') }}" method="post" class="sync-form flex flex-col gap-3">
+            <div id="sync-form-body"
+                 hx-get="{{ url_for('sync_folder_list') }}"
+                 hx-trigger="click once from:#sync-open"
+                 hx-swap="innerHTML">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Loading folders…</p>
+            </div>
+            <div class="flex flex-col gap-3 sm:flex-row-reverse">
+                <button type="submit" data-sync-submit disabled class="btn btn-primary w-full">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                        <path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    Sync now
+                </button>
+                <button type="button" onclick="document.getElementById('sync-dialog').close()" class="btn btn-secondary w-full">Cancel</button>
+            </div>
         </form>
     </div>
 </dialog>

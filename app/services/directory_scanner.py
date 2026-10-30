@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -19,11 +20,22 @@ class ScanResult:
 
 class DirectoryScanner:
     def scan(self, root: Path) -> ScanResult:
-        if not root.is_dir():
-            return ScanResult(errors=[(root, 'Not a directory')])
+        return self.scan_folders([root])
 
+    def scan_folders(self, folders: Iterable[Path]) -> ScanResult:
+        """Scan several roots, deduplicating files that resolve to the same path."""
         result = ScanResult()
         seen: set[Path] = set()
+
+        for folder in folders:
+            self._scan_one(folder, result, seen)
+
+        return result
+
+    def _scan_one(self, root: Path, result: ScanResult, seen: set[Path]) -> None:
+        if not root.is_dir():
+            result.errors.append((root, 'Not a directory'))
+            return
 
         for path in root.rglob('*'):
             # cheap extension check first - filters most of the tree (no syscall)
@@ -49,5 +61,3 @@ class DirectoryScanner:
             seen.add(resolved)
 
             result.file_paths.append(path)
-
-        return result

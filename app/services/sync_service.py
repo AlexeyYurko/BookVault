@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
@@ -20,6 +18,52 @@ logger = logging.getLogger(__name__)
 
 MAX_FINISHED_TASKS = 20
 
+ALL_FOLDERS = '__all__'
+
+SCOPE_PREVIEW_LIMIT = 3
+
+
+def validate_folder_name(name: str) -> str | None:
+    """Return an error message for names that must not be used as a scan root."""
+    if not name or name in {'.', '..'}:
+        return 'invalid folder name'
+    if '/' in name or '\\' in name or Path(name).is_absolute():
+        return 'invalid folder name'
+    if name.startswith('.'):
+        return 'hidden folders are not supported'
+    return None
+
+
+def resolve_selected_folders(books_dir: Path, names: list[str]) -> tuple[list[Path], list[str]]:
+    """Validate folder names against the books directory and return scan roots."""
+    folders: list[Path] = []
+    errors: list[str] = []
+    books_root = books_dir.resolve()
+
+    for name in names:
+        error = validate_folder_name(name)
+        if error is not None:
+            errors.append(f'{name}: {error}')
+            continue
+
+        folder = books_dir / name
+        try:
+            resolved = folder.resolve()
+        except (OSError, RuntimeError) as exc:
+            errors.append(f'{name}: {exc}')
+            continue
+
+        if not resolved.is_dir():
+            errors.append(f'{name}: folder not found')
+            continue
+        if resolved.parent != books_root:
+            errors.append(f'{name}: not a subfolder of the books directory')
+            continue
+
+        folders.append(folder)
+
+    return folders, errors
+
 
 @dataclass
 class SyncResult:
@@ -31,6 +75,7 @@ class SyncResult:
 @dataclass
 class SyncTask:
     task_id: str
+    scope: str = ""
     total: int = 0
     processed: int = 0
     added: int = 0
@@ -83,16 +128,36 @@ def resolve_books_dir(result: SyncResult, on_progress: Callable[[dict], None] | 
     return books_dir
 
 
+def format_scope(folders: list[str]) -> str:
+    names = sorted(folders, key=str.lower)
+    if len(names) <= SCOPE_PREVIEW_LIMIT:
+        return ', '.join(names)
+    return f"{', '.join(names[:SCOPE_PREVIEW_LIMIT])} and {len(names) - SCOPE_PREVIEW_LIMIT} more"
+
+
 class SyncService:
     def __init__(self, max_finished_tasks: int = MAX_FINISHED_TASKS):
         self._tasks: dict[str, SyncTask] = {}
         self._max_finished_tasks = max_finished_tasks
+        self._lock = Lock()
+        self._active: SyncTask | None = None
 
-    def create_task(self) -> SyncTask:
-        self.prune()
-        task = SyncTask(task_id=uuid.uuid4().hex[:12])
-        self._tasks[task.task_id] = task
-        return task
+    def create_task(self, scope: str = 'all folders') -> SyncTask | None:
+        """Create a new task, or return None while another sync is still running."""
+        with self._lock:
+            if self._active is not None and not self._active.done:
+                return None
+            self.prune()
+            task = SyncTask(task_id=uuid.uuid4().hex[:12], scope=scope)
+            self._tasks[task.task_id] = task
+            self._active = task
+            return task
+
+    def get_active_task(self) -> SyncTask | None:
+        with self._lock:
+            if self._active is not None and not self._active.done:
+                return self._active
+            return None
 
     def get_task(self, task_id: str) -> SyncTask | None:
         return self._tasks.get(task_id)
@@ -103,14 +168,32 @@ class SyncService:
             del self._tasks[task_id]
 
     def result_message(self, result: SyncResult) -> str:
+        if result.errors and not result.added and not result.skipped:
+            return f"Sync failed: {result.errors[0]}"
         parts = [f"Synced: {result.added} added, {result.skipped} skipped"]
         if result.errors:
             parts.append(f"{len(result.errors)} errors")
         return ", ".join(parts)
 
+    @staticmethod
+    def _resolve_scan_roots(books_dir: Path, folders: list[str] | None, result: SyncResult) -> list[Path] | None:
+        if folders is None:
+            return [books_dir]
+        if not folders:
+            result.errors.append('No folders selected')
+            return None
+
+        roots, folder_errors = resolve_selected_folders(books_dir, folders)
+        if folder_errors:
+            for error in folder_errors:
+                logger.error("Cannot sync folder: %s", error)
+                result.errors.append(error)
+            return None
+        return roots
+
     def run(  # noqa: PLR0915
         self,
-        max_workers: int | None = None,
+        folders: list[str] | None = None,
         on_progress: Callable[[dict], None] | None = None,
     ) -> SyncResult:
         result = SyncResult()
@@ -120,8 +203,16 @@ class SyncService:
         if books_dir is None:
             return result
 
-        logger.info("Sync started, scanning %s", books_dir)
-        scan_result = DirectoryScanner().scan(books_dir)
+        roots = self._resolve_scan_roots(books_dir, folders, result)
+        if roots is None:
+            if on_progress:
+                on_progress({"done": True, "errors": max(len(result.errors), 1)})
+            return result
+
+        scope = 'all folders' if folders is None else format_scope(folders)
+
+        logger.info("Sync started, scanning %s", scope)
+        scan_result = DirectoryScanner().scan_folders(roots)
         logger.info("Scan complete: %d files found, %d scan errors", len(scan_result.file_paths), len(scan_result.errors))
 
         for error_path, error_msg in scan_result.errors:
@@ -135,8 +226,7 @@ class SyncService:
                 on_progress({"done": True})
             return result
 
-        workers = max_workers or min(32, (os.cpu_count() or 1) + 2)
-        logger.info("Importing %d files with up to %d workers", total, workers)
+        logger.info("Importing %d files sequentially", total)
 
         if on_progress:
             on_progress({"total": total, "processed": 0, "current_file": ""})
@@ -187,13 +277,12 @@ class SyncService:
                             }
                         )
 
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = [
-                executor.submit(import_one, idx, file_path)
-                for idx, file_path in enumerate(scan_result.file_paths, start=1)
-            ]
-            for future in futures:
-                future.result()
+        # Imports are sequential on purpose: the pipeline does check-then-insert
+        # for shared reference rows (languages, authors, tags), which races under
+        # concurrency and loses books with UNIQUE constraint errors. PDFium is not
+        # thread-safe either.
+        for idx, file_path in enumerate(scan_result.file_paths, start=1):
+            import_one(idx, file_path)
 
         if on_progress:
             on_progress({"done": True})

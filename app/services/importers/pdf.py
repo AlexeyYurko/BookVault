@@ -1,6 +1,7 @@
 import logging
 from io import BytesIO
 from pathlib import Path
+from threading import Lock
 
 import pypdfium2 as pdfium
 from PIL import Image
@@ -16,6 +17,12 @@ logger = logging.getLogger(__name__)
 MAX_COVER_DIM = 1600
 
 ISBN_SCAN_PAGES = 5
+
+# PDFium is not thread-safe: concurrent calls corrupt its global state and make
+# document loading fail ("Data format error") or crash the process. Sync is
+# sequential now, but the lock keeps PDFium calls safe if work is parallelized
+# again (background tasks, future thread pools).
+_PDFIUM_LOCK = Lock()
 
 
 class PdfImporter(BookImporter):
@@ -40,9 +47,19 @@ class PdfImporter(BookImporter):
     def extract_cover(self):
         filename = self._cover_filename
         logger.info('Rendering cover: %s', filename)
-        pdf = pdfium.PdfDocument(self._get_pdf_source())
-        page = pdf.get_page(0)
-        cover = page.render(scale=300 / 72, optimize_mode=None).to_pil()
+        source = self._get_pdf_source()
+        with _PDFIUM_LOCK:
+            pdf = pdfium.PdfDocument(source)
+            try:
+                page = pdf.get_page(0)
+                bitmap = page.render(scale=300 / 72, optimize_mode=None)
+                try:
+                    # to_pil() may share the bitmap buffer, so copy before closing it.
+                    cover = bitmap.to_pil().copy()
+                finally:
+                    bitmap.close()
+            finally:
+                pdf.close()
         path = Path(settings.static_path, settings.cover_images_path, filename)
         if max(cover.width, cover.height) > MAX_COVER_DIM:
             ratio = MAX_COVER_DIM / max(cover.width, cover.height)
@@ -90,15 +107,17 @@ class PdfImporter(BookImporter):
 
     def _scan_isbns(self):
         logger.info('Scanning first %d pages for ISBN: %s', ISBN_SCAN_PAGES, self.file.filename)
-        pdf = pdfium.PdfDocument(self._get_pdf_source())
-        try:
-            text = ''
-            for index in range(min(len(pdf), ISBN_SCAN_PAGES)):
-                page = pdf.get_page(index)
-                text += page.get_textpage().get_text_bounded()
-            return extract_isbns(text)
-        finally:
-            pdf.close()
+        source = self._get_pdf_source()
+        with _PDFIUM_LOCK:
+            pdf = pdfium.PdfDocument(source)
+            try:
+                text = ''
+                for index in range(min(len(pdf), ISBN_SCAN_PAGES)):
+                    page = pdf.get_page(index)
+                    text += page.get_textpage().get_text_bounded()
+            finally:
+                pdf.close()
+        return extract_isbns(text)
 
     @staticmethod
     def _resolve_str(value) -> str:

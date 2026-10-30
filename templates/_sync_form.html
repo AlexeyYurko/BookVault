@@ -1,0 +1,28 @@
+{% if error %}
+<p data-sync-error class="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+    {{ error }}
+</p>
+{% else %}
+<fieldset class="space-y-2">
+    <legend class="sr-only">Folders to sync</legend>
+    <label class="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <input type="checkbox" name="folders" value="{{ all_folders_value }}" class="sync-all h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700" checked>
+        All folders
+    </label>
+    {% if folders %}
+    <div class="max-h-56 space-y-1 overflow-y-auto rounded-md border border-slate-200 p-2 dark:border-slate-700">
+        {% for folder in folders %}
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <input type="checkbox" name="folders" value="{{ folder }}" class="sync-folder h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700" disabled>
+            <span class="truncate" title="{{ folder }}">{{ folder }}</span>
+        </label>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-500 dark:text-slate-400">No subfolders found.</p>
+    {% endif %}
+    <p class="text-xs text-slate-500 dark:text-slate-400">
+        Files placed directly in the books directory are only imported by a full sync.
+    </p>
+</fieldset>
+{% endif %}
