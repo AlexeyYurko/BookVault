@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from app.models import Book, BookSeries
+from app.models import BookSeries
 from app.models.language import Language
+from app.repositories.book_repository import DEFAULT_SORT_BY, DEFAULT_SORT_ORDER, Page
 from app.services.importers import DjvuImporter, EpubImporter, PdfImporter
 from app.services.importers.dedup_guard import release, try_claim
 from app.services.importers.isbn import canonical13, normalize_isbn
-from app.services.metadata_lookup import BookMetadata, lookup_book
+from app.services.metadata_lookup import BookMetadata, MetadataLookup
 from app.services.metadata_resync import (
     mark_fields_updated,
     reset_field_protection,
@@ -72,8 +73,9 @@ class LookupResult:
 
 
 class BookService:
-    def __init__(self, store: DataStore):
+    def __init__(self, store: DataStore, metadata_lookup: MetadataLookup | None = None):
         self.store = store
+        self.metadata_lookup = metadata_lookup or MetadataLookup()
 
     def transaction(self):
         return self.store.transaction()
@@ -95,54 +97,25 @@ class BookService:
     def delete_books(self, book_ids: list[int]) -> None:
         self.store.book_repo.delete_books(book_ids)
 
-    def get_all_books(
+    def find_books(  # noqa: PLR0913
         self,
-        page: int,
-        per_page: int,
-        sort_by: str,
-        order: str,
-        filters: dict,
-    ) -> tuple[list[Book], int, int]:
-        return self.store.book_repo.get_all_books(
-            page=page, per_page=per_page, sort_by=sort_by, order=order, filters=filters
-        )
-
-    def search_books(  # noqa: PLR0913
-        self,
-        query: str,
-        page: int,
-        per_page: int,
-        sort_by: str,
-        order: str,
-        filters: dict,
-    ) -> tuple[list[Book], int, int]:
-        return self.store.book_repo.get_searched_books(
-            query, page=page, per_page=per_page, sort_by=sort_by, order=order, filters=filters
-        )
-
-    def get_books_by_tags(  # noqa: PLR0913
-        self,
-        tag_names: list[str],
-        page: int,
-        per_page: int,
-        sort_by: str,
-        order: str,
-        filters: dict,
-    ) -> tuple[list[Book], int, int]:
-        return self.store.book_repo.get_books_by_tags(
-            tag_names, page=page, per_page=per_page, sort_by=sort_by, order=order, filters=filters
-        )
-
-    def get_books_by_tag(
-        self,
-        tag_name: str,
-        page: int,
-        per_page: int,
-        sort_by: str,
-        order: str,
-    ) -> tuple[list[Book], int, int]:
-        return self.store.book_repo.get_books_by_tag(
-            tag_name, page=page, per_page=per_page, sort_by=sort_by, order=order
+        *,
+        query: str | None = None,
+        tags: list[str] | None = None,
+        filters: dict | None = None,
+        page: int = 1,
+        per_page: int = 20,
+        sort_by: str = DEFAULT_SORT_BY,
+        order: str = DEFAULT_SORT_ORDER,
+    ) -> Page:
+        return self.store.book_repo.find_books(
+            query=query,
+            tags=tags,
+            filters=filters,
+            page=page,
+            per_page=per_page,
+            sort_by=sort_by,
+            order=order,
         )
 
     def get_related_tags(self, tag_names: list[str]) -> list[Tag]:
@@ -176,11 +149,9 @@ class BookService:
         return result
 
     def find_link_candidates(self, book: Book, query: str, limit: int = 10) -> list[Book]:
-        books, _, _ = self.store.book_repo.get_searched_books(
-            query, page=1, per_page=limit, sort_by="title", order="asc", filters={}
-        )
+        result = self.store.book_repo.find_books(query=query, page=1, per_page=limit, sort_by="title", order="asc")
         excluded = {book.id, *(sibling.id for sibling in self.edition_siblings(book))}
-        return [candidate for candidate in books if candidate.id not in excluded]
+        return [candidate for candidate in result.books if candidate.id not in excluded]
 
     def link_edition(self, book: Book, target: Book) -> None:
         if book.id == target.id:
@@ -284,7 +255,7 @@ class BookService:
 
     def lookup_values(self, book: Book, query: str) -> LookupResult:
         query = query.strip() or book.isbn or book.title or ""
-        metadata = lookup_book(query)
+        metadata = self.metadata_lookup.lookup(query)
 
         values = self.edit_values(book)
         if metadata is None:
@@ -325,7 +296,9 @@ class BookService:
             errors.append("Invalid ISBN.")
         if dto.original_isbn.strip() and normalized_original_isbn is None:
             errors.append("Invalid original ISBN.")
-        return EditValidation(errors=errors, isbn=normalized_book_isbn, original_isbn=normalized_original_isbn, language=language)
+        return EditValidation(
+            errors=errors, isbn=normalized_book_isbn, original_isbn=normalized_original_isbn, language=language
+        )
 
     def edited_fields(self, book: Book, dto: EditBookDTO, validation: EditValidation) -> list[str]:
         changed = []
@@ -336,9 +309,17 @@ class BookService:
             ("original_isbn", validation.original_isbn or None, book.original_isbn),
             ("edition", dto.edition.strip() or None, book.edition),
             ("language", dto.language_code, book.language_code),
-            ("authors", {name.strip() for name in dto.author_names.split(",") if name.strip()}, {author.name for author in book.authors}),
+            (
+                "authors",
+                {name.strip() for name in dto.author_names.split(",") if name.strip()},
+                {author.name for author in book.authors},
+            ),
             ("publisher", dto.publisher_name.strip() or None, book.publisher.name if book.publisher else None),
-            ("tags", {name.strip().lower() for name in dto.tags_str.split(",") if name.strip()}, {tag.name for tag in book.tags}),
+            (
+                "tags",
+                {name.strip().lower() for name in dto.tags_str.split(",") if name.strip()},
+                {tag.name for tag in book.tags},
+            ),
             ("format", dto.format.strip() or None, book.format),
         ]
         for column, new_value, old_value in comparisons:

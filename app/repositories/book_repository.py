@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import joinedload
 
@@ -10,6 +12,13 @@ from app.repositories.base import AbstractRepository
 SORTABLE_COLUMNS = frozenset({"title", "added_at", "edition", "publisher_id", "language_code"})
 DEFAULT_SORT_BY = "title"
 DEFAULT_SORT_ORDER = "asc"
+
+
+@dataclass(frozen=True)
+class Page:
+    books: list[Book]
+    total: int
+    page: int
 
 
 def _total_pages(total: int, per_page: int) -> int:
@@ -74,83 +83,54 @@ class BookRepository(AbstractRepository):
     def get_all_series(self):
         return self.session.scalars(select(BookSeries).order_by(BookSeries.name)).all()
 
-    def get_searched_books(  # noqa: PLR0913
+    def find_books(  # noqa: PLR0913
         self,
-        query: str,
-        page: int = 1,
-        per_page: int = 20,
-        sort_by: str = DEFAULT_SORT_BY,
-        order: str = DEFAULT_SORT_ORDER,
+        *,
+        query: str | None = None,
+        tags: list[str] | None = None,
         filters: dict | None = None,
-    ) -> tuple[list[Book], int, int]:
-        pattern = f"%{query}%"
-        where = or_(
-            Book.title.ilike(pattern),
-            Book.isbn.ilike(pattern),
-            Book.description.ilike(pattern),
-            Book.edition.ilike(pattern),
-            Book.authors.any(Author.name.ilike(pattern)),
-            Book.tags.any(Tag.name.ilike(pattern)),
-            Book.publisher.has(Publisher.name.ilike(pattern)),
-            Book.series.has(BookSeries.name.ilike(pattern)),
-            Book.collection.has(Collection.name.ilike(pattern)),
-        )
-        filter_conditions = _filter_conditions(filters or {})
-        if filter_conditions:
-            where = and_(where, *filter_conditions)
-        total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
-        page = max(1, min(page, _total_pages(total, per_page)))
-        primary, tiebreaker = _order_clause(sort_by, order)
-        books = self.session.scalars(
-            select(Book).where(where).order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
-        ).all()
-        return books, total, page
-
-    def get_book_by_id(self, book_id: int) -> Book:
-        book = self.session.scalar(select(Book).options(joinedload(Book.tags)).where(Book.id == book_id))
-        return book
-
-    def get_books_by_tag(
-        self,
-        tag_name: str,
         page: int = 1,
         per_page: int = 20,
         sort_by: str = DEFAULT_SORT_BY,
         order: str = DEFAULT_SORT_ORDER,
-    ) -> tuple[list[Book], int, int]:
-        where = Book.tags.any(name=tag_name)
-        total = self.session.scalar(select(func.count()).select_from(Book).where(where)) or 0
-        page = max(1, min(page, _total_pages(total, per_page)))
-        primary, tiebreaker = _order_clause(sort_by, order)
-        books = self.session.scalars(
-            select(Book).where(where).order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
-        ).all()
-        return books, total, page
-
-    def get_books_by_tags(  # noqa: PLR0913
-        self,
-        tag_names: list[str],
-        page: int = 1,
-        per_page: int = 20,
-        sort_by: str = DEFAULT_SORT_BY,
-        order: str = DEFAULT_SORT_ORDER,
-        filters: dict | None = None,
-    ) -> tuple[list[Book], int, int]:
-        conditions = [and_(*(Book.tags.any(name=name) for name in tag_names))] if tag_names else []
+    ) -> Page:
+        conditions: list = []
+        if query:
+            pattern = f"%{query}%"
+            conditions.append(
+                or_(
+                    Book.title.ilike(pattern),
+                    Book.isbn.ilike(pattern),
+                    Book.description.ilike(pattern),
+                    Book.edition.ilike(pattern),
+                    Book.authors.any(Author.name.ilike(pattern)),
+                    Book.tags.any(Tag.name.ilike(pattern)),
+                    Book.publisher.has(Publisher.name.ilike(pattern)),
+                    Book.series.has(BookSeries.name.ilike(pattern)),
+                    Book.collection.has(Collection.name.ilike(pattern)),
+                )
+            )
+        conditions.extend(Book.tags.any(name=name) for name in tags or ())
         conditions.extend(_filter_conditions(filters or {}))
+
         where = and_(*conditions) if conditions else None
         count_stmt = select(func.count()).select_from(Book)
         books_stmt = select(Book)
         if where is not None:
             count_stmt = count_stmt.where(where)
             books_stmt = books_stmt.where(where)
+
         total = self.session.scalar(count_stmt) or 0
         page = max(1, min(page, _total_pages(total, per_page)))
         primary, tiebreaker = _order_clause(sort_by, order)
         books = self.session.scalars(
             books_stmt.order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
         ).all()
-        return books, total, page
+        return Page(books=books, total=total, page=page)
+
+    def get_book_by_id(self, book_id: int) -> Book:
+        book = self.session.scalar(select(Book).options(joinedload(Book.tags)).where(Book.id == book_id))
+        return book
 
     def get_related_tags(self, tag_names: list[str]) -> list[Tag]:
         stmt = select(Tag).join(Tag.books)
@@ -158,29 +138,6 @@ class BookRepository(AbstractRepository):
             stmt = stmt.where(and_(*(Book.tags.any(name=name) for name in tag_names)))
             stmt = stmt.where(Tag.name.notin_(tag_names))
         return self.session.scalars(stmt.group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)).unique().all()
-
-    def get_all_books(
-        self,
-        page: int = 1,
-        per_page: int = 20,
-        sort_by: str = DEFAULT_SORT_BY,
-        order: str = DEFAULT_SORT_ORDER,
-        filters: dict | None = None,
-    ) -> tuple[list[Book], int, int]:
-        conditions = _filter_conditions(filters or {})
-        where = and_(*conditions) if conditions else None
-        count_stmt = select(func.count()).select_from(Book)
-        books_stmt = select(Book)
-        if where is not None:
-            count_stmt = count_stmt.where(where)
-            books_stmt = books_stmt.where(where)
-        total = self.session.scalar(count_stmt) or 0
-        page = max(1, min(page, _total_pages(total, per_page)))
-        primary, tiebreaker = _order_clause(sort_by, order)
-        books = self.session.scalars(
-            books_stmt.order_by(primary, tiebreaker).offset((page - 1) * per_page).limit(per_page)
-        ).all()
-        return books, total, page
 
     def add_tag(self, book: Book, tag: Tag) -> None:
         if tag not in book.tags:
