@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import enum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
@@ -10,6 +14,9 @@ from app.repositories.book_repository import (
     SORTABLE_COLUMNS,
 )
 
+if TYPE_CHECKING:
+    from app.services.book_service import BookService
+
 templates = Jinja2Templates(directory="templates")
 
 _css_path = Path(settings.static_path) / "css" / "styles.css"
@@ -19,6 +26,12 @@ ALLOWED_PER_PAGE = (20, 50, 100)
 DEFAULT_PER_PAGE = 20
 
 ALLOWED_SORT_ORDERS = ("asc", "desc")
+
+
+class TagSource(enum.StrEnum):
+    ALL = "all"
+    PAGE = "page"
+    RELATED = "related"
 
 
 class Pagination:
@@ -93,6 +106,13 @@ def normalize_pagination(
     return p, size
 
 
+def _parse_int(value: str | None) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except ValueError:
+        return None
+
+
 def normalize_sort(
     sort_by: str | None,
     order: str | None,
@@ -150,4 +170,68 @@ def render_book_list(  # noqa: PLR0913
             "default_per_page": DEFAULT_PER_PAGE,
             **context,
         },
+    )
+
+
+def render_catalog(  # noqa: PLR0913
+    request: Request,
+    book_service: BookService,
+    *,
+    route_name: str,
+    query: str | None = None,
+    tags: list[str] | None = None,
+    tag_source: TagSource = TagSource.PAGE,
+    route_kwargs: dict | None = None,
+    extra_query: dict | None = None,
+):
+    """Render a paginated book list from the request's paging, sort and filter params.
+
+    Callers supply only the selection criteria (query/tags) and the route
+    identity; parsing, querying, context assembly and rendering live here.
+    """
+    page, per_page = normalize_pagination(
+        _parse_int(request.query_params.get("page")),
+        _parse_int(request.query_params.get("per_page")),
+    )
+    sort_by, sort_order = normalize_sort(
+        request.query_params.get("sort_by"),
+        request.query_params.get("order"),
+    )
+    filters = extract_filters(request.query_params)
+
+    result = book_service.find_books(
+        query=query,
+        tags=tags,
+        filters=filters,
+        page=page,
+        per_page=per_page,
+        sort_by=sort_by,
+        order=sort_order,
+    )
+    books = result.books
+
+    if tag_source is TagSource.ALL:
+        sidebar_tags = book_service.get_tags_linked_to_books()
+    elif tag_source is TagSource.RELATED:
+        sidebar_tags = book_service.get_related_tags(tags or [])
+    else:
+        sidebar_tags = collect_book_tags(books)
+
+    return render_book_list(
+        request,
+        context={
+            "books": books,
+            "tags": sidebar_tags,
+            "edition_siblings": book_service.edition_siblings_map(books),
+            "active_filters": filters,
+            **book_service.filter_context(),
+        },
+        route_name=route_name,
+        page=result.page,
+        per_page=per_page,
+        total=result.total,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        route_kwargs=route_kwargs,
+        extra_query={**(extra_query or {}), **filters},
     )

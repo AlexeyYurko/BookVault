@@ -15,17 +15,15 @@ from pydantic import BaseModel, Field
 from starlette import status
 
 from app.config import settings
-from app.handlers.dependencies import BookServiceDependency
+from app.handlers.dependencies import (
+    BookDependency,
+    BookServiceDependency,
+    ReadableBookDependency,
+    TargetBookDependency,
+)
 from app.services.book_service import EditBookDTO, ImportedFile
 from app.services.metadata_resync import FIELD_LABELS
-from app.template_utils import (
-    collect_book_tags,
-    extract_filters,
-    normalize_pagination,
-    normalize_sort,
-    render_book_list,
-    templates,
-)
+from app.template_utils import TagSource, render_catalog, templates
 
 BOOK_MEDIA_TYPES = {
     ".pdf": "application/pdf",
@@ -63,81 +61,34 @@ router = APIRouter()
 
 
 @router.get("/search", summary="Search books", status_code=status.HTTP_200_OK)
-def search_books(  # noqa: PLR0913
+def search_books(
     request: Request,
     book_service: BookServiceDependency,
     query: str = Query(default=""),
-    page: int | None = None,
-    per_page: int | None = None,
-    sort_by: str | None = None,
-    order: str | None = None,
 ):
-    page, per_page_size = normalize_pagination(page, per_page)
-    sort_by, sort_order = normalize_sort(sort_by, order)
-    filters = extract_filters(request.query_params)
-    books, total, page = book_service.search_books(
-        query, page=page, per_page=per_page_size, sort_by=sort_by, order=sort_order, filters=filters
-    )
-    extra_query = {"query": query} if query else {}
-    extra_query.update(filters)
-    filter_context = book_service.filter_context()
-    return render_book_list(
+    return render_catalog(
         request,
-        context={
-            "books": books,
-            "tags": collect_book_tags(books),
-            "edition_siblings": book_service.edition_siblings_map(books),
-            "active_filters": filters,
-            **filter_context,
-        },
+        book_service,
         route_name="search_books",
-        page=page,
-        per_page=per_page_size,
-        total=total,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        extra_query=extra_query or None,
+        query=query,
+        extra_query={"query": query} if query else None,
     )
 
 
 @router.get("/filter")
-def filter_books(  # noqa: PLR0913
+def filter_books(
     request: Request,
     book_service: BookServiceDependency,
     tags: str = Query(default=""),
-    page: int | None = None,
-    per_page: int | None = None,
-    sort_by: str | None = None,
-    order: str | None = None,
 ):
     tag_names = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
-    page, per_page_size = normalize_pagination(page, per_page)
-    sort_by, sort_order = normalize_sort(sort_by, order)
-    filters = extract_filters(request.query_params)
-    books, total, page = book_service.get_books_by_tags(
-        tag_names, page=page, per_page=per_page_size, sort_by=sort_by, order=sort_order, filters=filters
-    )
-    related_tags = book_service.get_related_tags(tag_names)
-    extra_query = {"tags": tags}
-    extra_query.update(filters)
-    filter_context = book_service.filter_context()
-    return render_book_list(
+    return render_catalog(
         request,
-        context={
-            "books": books,
-            "tags": related_tags,
-            "active_tags": tag_names,
-            "edition_siblings": book_service.edition_siblings_map(books),
-            "active_filters": filters,
-            **filter_context,
-        },
+        book_service,
         route_name="filter_books",
-        page=page,
-        per_page=per_page_size,
-        total=total,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        extra_query=extra_query,
+        tags=tag_names,
+        tag_source=TagSource.RELATED,
+        extra_query={"tags": tags},
     )
 
 
@@ -161,15 +112,9 @@ def add_books(
 @router.get("/{book_id}")
 def show_book(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Book with id={book_id} not found",
-        )
     next_param = request.query_params.get("next") or request.headers.get("referer", "")
     back_url = str(next_url(request, next_param) or request.url_for("homepage"))
     return templates.TemplateResponse(
@@ -187,13 +132,8 @@ def show_book(
 @router.get("/{book_id}/read")
 def read_book(
     request: Request,
-    book_id: int,
-    book_service: BookServiceDependency,
+    book: ReadableBookDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book or not book.file_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
     reader_format = READER_FORMATS.get(Path(book.file_path).suffix.lower())
     if reader_format is None:
         raise HTTPException(
@@ -231,15 +171,8 @@ def save_reading_progress(
 @router.get("/{book_id}/detail")
 def book_detail_panel(
     request: Request,
-    book_id: int,
-    book_service: BookServiceDependency,
+    book: BookDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Book with id={book_id} not found",
-        )
     back_url = next_url(request, request.headers.get("referer", "")) or str(request.url_for("homepage"))
     return templates.TemplateResponse(
         "book_detail_panel.html",
@@ -261,13 +194,9 @@ def next_url(request: Request, url: str) -> str | None:
 @router.get("/{book_id}/edit")
 def edit_book(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     resync_code = request.query_params.get("resync")
     edition_code = request.query_params.get("edition")
     notice = None
@@ -296,46 +225,34 @@ def edit_book(
 @router.post("/{book_id}/resync")
 def resync_metadata(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     outcome = book_service.resync_metadata(book)
-    url = request.url_for("edit_book", book_id=book_id).include_query_params(resync=outcome or "ok")
+    url = request.url_for("edit_book", book_id=book.id).include_query_params(resync=outcome or "ok")
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/{book_id}/unprotect")
 def unprotect_fields(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     book_service.unprotect_fields(book)
 
-    url = request.url_for("edit_book", book_id=book_id).include_query_params(resync="unprotected")
+    url = request.url_for("edit_book", book_id=book.id).include_query_params(resync="unprotected")
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/{book_id}/lookup")
 def lookup_metadata(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
     query: str = Form(default=""),
     next: str = Form(default=""),
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     result = book_service.lookup_values(book, query)
 
     return templates.TemplateResponse(
@@ -357,7 +274,7 @@ def lookup_metadata(
 @router.post("/{book_id}/edit")
 def update_book(  # noqa: PLR0913
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
     title: str = Form(...),
     author_names: str = Form(default=""),
@@ -374,10 +291,6 @@ def update_book(  # noqa: PLR0913
     description: str = Form(default=""),
     next: str = Form(default=""),
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     dto = EditBookDTO(
         title=title.strip(),
         author_names=author_names,
@@ -410,21 +323,17 @@ def update_book(  # noqa: PLR0913
 
     book_service.apply_edit(book, dto, validation)
 
-    target = next_url(request, next) or request.url_for("show_book", book_id=book_id)
+    target = next_url(request, next) or request.url_for("show_book", book_id=book.id)
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{book_id}/editions/search")
 def search_link_candidates(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
     query: str = Query(default=""),
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     candidates = book_service.find_link_candidates(book, query)
     return templates.TemplateResponse(
         "edition_link_results.html",
@@ -435,51 +344,37 @@ def search_link_candidates(
 @router.post("/{book_id}/editions/link")
 def link_edition(
     request: Request,
-    book_id: int,
+    book: BookDependency,
+    target: TargetBookDependency,
     book_service: BookServiceDependency,
-    target_book_id: int = Form(...),
 ):
-    book = book_service.get_book_by_id(book_id)
-    target = book_service.get_book_by_id(target_book_id)
-    if not book or not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
-
     try:
         book_service.link_edition(book, target)
         outcome = "linked"
     except ValueError:
         outcome = "error"
 
-    url = request.url_for("edit_book", book_id=book_id).include_query_params(edition=outcome)
+    url = request.url_for("edit_book", book_id=book.id).include_query_params(edition=outcome)
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/{book_id}/editions/unlink")
 def unlink_edition(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id={book_id} not found")
-
     book_service.unlink_edition(book)
 
-    url = request.url_for("edit_book", book_id=book_id).include_query_params(edition="unlinked")
+    url = request.url_for("edit_book", book_id=book.id).include_query_params(edition="unlinked")
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{book_id}/download")
 def download_book(
     request: Request,
-    book_id: int,
-    book_service: BookServiceDependency,
+    book: ReadableBookDependency,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book or not book.file_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
     file_path = Path(book.file_path)
     if not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
@@ -505,14 +400,9 @@ def download_book(
 @router.get("/{book_id}/file")
 def serve_book_file(
     request: Request,
-    book_id: int,
-    book_service: BookServiceDependency,
+    book: ReadableBookDependency,
     download: bool = False,
 ):
-    book = book_service.get_book_by_id(book_id)
-    if not book or not book.file_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
     file_path = Path(book.file_path)
     if not file_path.is_absolute():
         file_path = Path(settings.books_directory) / file_path if settings.books_directory else file_path
@@ -538,66 +428,41 @@ def serve_book_file(
 
 
 @router.get("/by_tag/{tag_name}")
-def show_books_by_tag(  # noqa: PLR0913
+def show_books_by_tag(
     request: Request,
     tag_name: str,
     book_service: BookServiceDependency,
-    page: int | None = None,
-    per_page: int | None = None,
-    sort_by: str | None = None,
-    order: str | None = None,
 ):
-    page, per_page_size = normalize_pagination(page, per_page)
-    sort_by, sort_order = normalize_sort(sort_by, order)
-    books, total, page = book_service.get_books_by_tag(
-        tag_name, page=page, per_page=per_page_size, sort_by=sort_by, order=sort_order
-    )
-    return render_book_list(
+    return render_catalog(
         request,
-        context={
-            "books": books,
-            "tags": collect_book_tags(books),
-            "edition_siblings": book_service.edition_siblings_map(books),
-        },
+        book_service,
         route_name="show_books_by_tag",
+        tags=[tag_name],
         route_kwargs={"tag_name": tag_name},
-        page=page,
-        per_page=per_page_size,
-        total=total,
-        sort_by=sort_by,
-        sort_order=sort_order,
     )
 
 
-@router.post("/books/{book_id}/tags")
+@router.post("/{book_id}/tags")
 def add_tag(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     book_service: BookServiceDependency,
     tag_name: str = Form(...),
 ):
     with book_service.transaction():
-        book = book_service.get_book_by_id(book_id)
-        if not book:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
-
         book_service.add_tag(book, tag_name)
 
     return templates.TemplateResponse("tags.html", {"request": request, "book": book})
 
 
-@router.delete("/books/{book_id}/tags/{tag_id}")
+@router.delete("/{book_id}/tags/{tag_id}")
 def remove_tag(
     request: Request,
-    book_id: int,
+    book: BookDependency,
     tag_id: int,
     book_service: BookServiceDependency,
 ):
     with book_service.transaction():
-        book = book_service.get_book_by_id(book_id)
-        if not book:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
-
         if not book_service.remove_tag(book, tag_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from typing import Protocol
 
 import httpx
 
@@ -52,133 +54,168 @@ class BookMetadata:
     fuzzy: bool = False
 
 
-def google_books(client: httpx.Client, query: str, isbn: str | None) -> BookMetadata | None:
-    params = {"q": f"isbn:{isbn}" if isbn else query, "maxResults": 1}
-    try:
-        response = client.get(GOOGLE_BOOKS_URL, params=params)
-        response.raise_for_status()
-        items = response.json().get("items") or []
-    except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("Google Books lookup failed: %s", exc)
-        return None
-    if not items:
-        return None
+class MetadataProvider(Protocol):
+    def lookup(self, query: str, isbn: str | None) -> BookMetadata | None:
+        """Return metadata for the query/ISBN, or None when this source has nothing."""
+        ...
 
-    volume = items[0].get("volumeInfo") or {}
-    title = volume.get("title")
-    if not title and len(items) > 1:
-        volume = items[1].get("volumeInfo") or {}
+
+class GoogleBooksProvider:
+    def __init__(self, client: httpx.Client):
+        self.client = client
+
+    def lookup(self, query: str, isbn: str | None) -> BookMetadata | None:
+        params = {"q": f"isbn:{isbn}" if isbn else query, "maxResults": 1}
+        try:
+            response = self.client.get(GOOGLE_BOOKS_URL, params=params)
+            response.raise_for_status()
+            items = response.json().get("items") or []
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("Google Books lookup failed: %s", exc)
+            return None
+        if not items:
+            return None
+
+        volume = items[0].get("volumeInfo") or {}
         title = volume.get("title")
-    if not title:
-        return None
+        if not title and len(items) > 1:
+            volume = items[1].get("volumeInfo") or {}
+            title = volume.get("title")
+        if not title:
+            return None
 
-    identifiers = {item.get("type"): item.get("identifier") for item in volume.get("industryIdentifiers") or []}
-    authors = volume.get("authors") or []
-    if isinstance(authors, str):
-        authors = [authors]
+        identifiers = {item.get("type"): item.get("identifier") for item in volume.get("industryIdentifiers") or []}
+        authors = volume.get("authors") or []
+        if isinstance(authors, str):
+            authors = [authors]
 
-    return BookMetadata(
-        title=title,
-        authors=[a for a in authors if isinstance(a, str)] or [],
-        publisher=volume.get("publisher"),
-        isbn=identifiers.get("ISBN_13") or identifiers.get("ISBN_10"),
-        language_code=normalize_language_code(volume.get("language")),
-        description=volume.get("description"),
-        source="Google Books",
-    )
-
-
-def open_library_edition(client: httpx.Client, isbn: str) -> BookMetadata | None:
-    params = {"bibkeys": f"ISBN:{isbn}", "jscmd": "data", "format": "json"}
-    try:
-        response = client.get(OPEN_LIBRARY_ISBN_URL, params=params)
-        response.raise_for_status()
-        edition = response.json().get(f"ISBN:{isbn}") or {}
-    except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("Open Library ISBN lookup failed: %s", exc)
-        return None
-    title = edition.get("title")
-    if not title:
-        return None
-
-    authors = [a.get("name", "") for a in edition.get("authors") or [] if a.get("name")]
-    publishers = [p.get("name", "") for p in edition.get("publishers") or [] if p.get("name")]
-    language_code = None
-    for language in edition.get("languages") or []:
-        key = language.get("key", "")
-        if "/languages/" in key:
-            language_code = key.rsplit("/", 1)[-1]
-            break
-    description = edition.get("description")
-    if isinstance(description, dict):
-        description = description.get("value")
-
-    return BookMetadata(
-        title=title,
-        authors=authors,
-        publisher=publishers[0] if publishers else None,
-        isbn=isbn,
-        language_code=normalize_language_code(language_code),
-        description=description,
-        source="Open Library",
-    )
+        return BookMetadata(
+            title=title,
+            authors=[a for a in authors if isinstance(a, str)] or [],
+            publisher=volume.get("publisher"),
+            isbn=identifiers.get("ISBN_13") or identifiers.get("ISBN_10"),
+            language_code=normalize_language_code(volume.get("language")),
+            description=volume.get("description"),
+            source="Google Books",
+        )
 
 
-def open_library_search(client: httpx.Client, query: str, target_isbn: str | None = None) -> BookMetadata | None:
-    params = {
-        "q": query,
-        "limit": 1,
-        "fields": "title,author_name,publisher,isbn,language",
-    }
-    try:
-        response = client.get(OPEN_LIBRARY_SEARCH_URL, params=params)
-        response.raise_for_status()
-        docs = response.json().get("docs") or []
-    except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("Open Library search failed: %s", exc)
-        return None
-    if not docs:
-        return None
+class OpenLibraryEditionProvider:
+    def __init__(self, client: httpx.Client):
+        self.client = client
 
-    doc = docs[0]
-    title = doc.get("title")
-    if not title:
-        return None
+    def lookup(self, query: str, isbn: str | None) -> BookMetadata | None:
+        if not isbn:
+            return None
 
-    isbns = doc.get("isbn") or []
-    isbn = next((isbn for isbn in isbns if normalize_isbn(isbn)), None)
-    fuzzy = False
-    if target_isbn:
-        if canonical13(target_isbn) in {canonical13(isbn) for isbn in isbns}:
-            isbn = target_isbn
-        else:
-            fuzzy = True
-    languages = doc.get("language") or []
-    publishers = doc.get("publisher") or []
+        params = {"bibkeys": f"ISBN:{isbn}", "jscmd": "data", "format": "json"}
+        try:
+            response = self.client.get(OPEN_LIBRARY_ISBN_URL, params=params)
+            response.raise_for_status()
+            edition = response.json().get(f"ISBN:{isbn}") or {}
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("Open Library ISBN lookup failed: %s", exc)
+            return None
+        title = edition.get("title")
+        if not title:
+            return None
 
-    return BookMetadata(
-        title=title,
-        authors=[a for a in doc.get("author_name") or [] if isinstance(a, str)],
-        publisher=publishers[0] if publishers else None,
-        isbn=isbn,
-        language_code=normalize_language_code(languages[0]) if languages else None,
-        source="Open Library",
-        fuzzy=fuzzy,
-    )
+        authors = [a.get("name", "") for a in edition.get("authors") or [] if a.get("name")]
+        publishers = [p.get("name", "") for p in edition.get("publishers") or [] if p.get("name")]
+        language_code = None
+        for language in edition.get("languages") or []:
+            key = language.get("key", "")
+            if "/languages/" in key:
+                language_code = key.rsplit("/", 1)[-1]
+                break
+        description = edition.get("description")
+        if isinstance(description, dict):
+            description = description.get("value")
+
+        return BookMetadata(
+            title=title,
+            authors=authors,
+            publisher=publishers[0] if publishers else None,
+            isbn=isbn,
+            language_code=normalize_language_code(language_code),
+            description=description,
+            source="Open Library",
+        )
 
 
-def lookup_book(query: str) -> BookMetadata | None:
-    """look up book metadata, trying Google Books first, then Open Library"""
-    query = query.strip()
-    if not query:
-        return None
-    isbn = normalize_isbn(query)
+class OpenLibrarySearchProvider:
+    def __init__(self, client: httpx.Client):
+        self.client = client
 
-    with httpx.Client(timeout=TIMEOUT) as client:
+    def lookup(self, query: str, isbn: str | None) -> BookMetadata | None:
+        params = {
+            "q": isbn or query,
+            "limit": 1,
+            "fields": "title,author_name,publisher,isbn,language",
+        }
+        try:
+            response = self.client.get(OPEN_LIBRARY_SEARCH_URL, params=params)
+            response.raise_for_status()
+            docs = response.json().get("docs") or []
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("Open Library search failed: %s", exc)
+            return None
+        if not docs:
+            return None
+
+        doc = docs[0]
+        title = doc.get("title")
+        if not title:
+            return None
+
+        isbns = doc.get("isbn") or []
+        found_isbn = next((value for value in isbns if normalize_isbn(value)), None)
+        fuzzy = False
         if isbn:
-            metadata = google_books(client, query, isbn) or open_library_edition(client, isbn)
-            if metadata is None:
-                metadata = open_library_search(client, isbn, isbn)
-        else:
-            metadata = google_books(client, query, None) or open_library_search(client, query)
-    return metadata
+            if canonical13(isbn) in {canonical13(value) for value in isbns}:
+                found_isbn = isbn
+            else:
+                fuzzy = True
+        languages = doc.get("language") or []
+        publishers = doc.get("publisher") or []
+
+        return BookMetadata(
+            title=title,
+            authors=[a for a in doc.get("author_name") or [] if isinstance(a, str)],
+            publisher=publishers[0] if publishers else None,
+            isbn=found_isbn,
+            language_code=normalize_language_code(languages[0]) if languages else None,
+            source="Open Library",
+            fuzzy=fuzzy,
+        )
+
+
+ProvidersFactory = Callable[[httpx.Client, str | None], Sequence[MetadataProvider]]
+
+
+def default_providers(client: httpx.Client, isbn: str | None) -> list[MetadataProvider]:
+    """Providers in fallback order; the edition lookup only makes sense with an ISBN."""
+    providers: list[MetadataProvider] = [GoogleBooksProvider(client)]
+    if isbn:
+        providers.append(OpenLibraryEditionProvider(client))
+    providers.append(OpenLibrarySearchProvider(client))
+    return providers
+
+
+class MetadataLookup:
+    def __init__(self, providers_factory: ProvidersFactory = default_providers):
+        self._providers_factory = providers_factory
+
+    def lookup(self, query: str) -> BookMetadata | None:
+        """Return the first provider's metadata for the query, or None."""
+        query = query.strip()
+        if not query:
+            return None
+
+        isbn = normalize_isbn(query)
+        with httpx.Client(timeout=TIMEOUT) as client:
+            for provider in self._providers_factory(client, isbn):
+                metadata = provider.lookup(query, isbn)
+                if metadata is not None:
+                    return metadata
+        return None
