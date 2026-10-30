@@ -201,12 +201,14 @@ def read_book(
             detail="This format cannot be read in the browser",
         )
 
+    back_url = next_url(request, request.query_params.get("next", "")) or str(request.url_for("homepage"))
     return templates.TemplateResponse(
         "reader.html",
         {
             "request": request,
             "book": book,
             "reader_format": reader_format,
+            "back_url": back_url,
         },
     )
 
@@ -238,7 +240,11 @@ def book_detail_panel(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id={book_id} not found",
         )
-    return templates.TemplateResponse("book_detail_panel.html", {"request": request, "book": book})
+    back_url = next_url(request, request.headers.get("referer", "")) or str(request.url_for("homepage"))
+    return templates.TemplateResponse(
+        "book_detail_panel.html",
+        {"request": request, "book": book, "back_url": back_url},
+    )
 
 
 def next_url(request: Request, url: str) -> str | None:

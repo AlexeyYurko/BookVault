@@ -43,6 +43,41 @@
     transform: rotate(-90deg);
 }
 
+/* Reader fullscreen */
+#reader-root:fullscreen {
+    height: 100vh;
+    max-width: none;
+    padding: 0.5rem;
+    background-color: #f8fafc;
+}
+
+.dark #reader-root:fullscreen {
+    background-color: #0f172a;
+}
+
+#reader-root.reader-pseudo-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    height: auto;
+    max-width: none;
+    padding: 0.5rem;
+    background-color: #f8fafc;
+}
+
+.dark #reader-root.reader-pseudo-fullscreen {
+    background-color: #0f172a;
+}
+
+/* Hide the reader chrome while idle in fullscreen */
+#reader-root.reader-chrome-hidden > [data-reader-chrome] {
+    display: none;
+}
+
+#reader-root.reader-chrome-hidden {
+    cursor: none;
+}
+
 /* Sync confirmation dialog backdrop */
 #sync-dialog::backdrop {
     background-color: rgba(15, 23, 42, 0.5);

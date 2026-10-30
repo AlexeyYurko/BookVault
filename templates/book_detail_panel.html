@@ -52,7 +52,8 @@
             <div class="flex flex-wrap items-center gap-2">
                 {% set readable = book.file_path and (book.file_path.lower().endswith('.pdf') or book.file_path.lower().endswith('.epub')) %}
                 {% if book.file_path %}
-                <a href="{{ url_for('read_book', book_id=book.id) if readable else url_for('serve_book_file', book_id=book.id) }}"
+                {% set read_href = (url_for('read_book', book_id=book.id) ~ '?next=' ~ (back_url|urlencode)) if readable else url_for('serve_book_file', book_id=book.id) %}
+                <a href="{{ read_href }}"
                     {% if not readable %}target="_blank" rel="noopener"{% endif %}
                     class="btn btn-primary">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

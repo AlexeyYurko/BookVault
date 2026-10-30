@@ -116,7 +116,8 @@
                                     {% endif %}
                                     {% set readable = book.file_path and (book.file_path.lower().endswith('.pdf') or book.file_path.lower().endswith('.epub')) %}
                                     {% if book.file_path %}
-                                    <a href="{{ url_for('read_book', book_id=book.id) if readable else url_for('serve_book_file', book_id=book.id) }}"
+                                    {% set read_href = (url_for('read_book', book_id=book.id) ~ '?next=' ~ (request.url|string|urlencode)) if readable else url_for('serve_book_file', book_id=book.id) %}
+                                    <a href="{{ read_href }}"
                                         {% if not readable %}target="_blank" rel="noopener"{% endif %}
                                         class="text-slate-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
                                         title="{{ 'Read' if readable else 'Open file' }}">

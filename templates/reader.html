@@ -3,9 +3,9 @@
 {% block title %}{{ book.title }} — BookVault{% endblock %}
 
 {% block content %}
-<div class="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl flex-col gap-2 px-2 py-2 sm:px-4">
-    <div class="flex items-center gap-2">
-        <a href="{{ url_for('show_book', book_id=book.id) }}" class="btn btn-secondary shrink-0">
+<div id="reader-root" class="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl flex-col gap-2 bg-slate-50 px-2 py-2 sm:px-4 dark:bg-slate-900">
+    <div class="flex items-center gap-2" data-reader-chrome>
+        <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ back_url|urlencode }}" class="btn btn-secondary shrink-0">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -16,21 +16,41 @@
             <div class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ book.title }}</div>
             <div id="reader-progress-label" class="text-xs text-slate-500 dark:text-slate-400">0%</div>
         </div>
+        <button type="button" id="reader-fullscreen" class="btn btn-secondary shrink-0"
+            aria-label="Toggle fullscreen" aria-pressed="false" title="Fullscreen (F)">
+            <svg id="fs-expand" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+                <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+                <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+            </svg>
+            <svg id="fs-compress" class="hidden h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3v3a2 2 0 0 1-2 2H3"/>
+                <path d="M21 8h-3a2 2 0 0 1-2-2V3"/>
+                <path d="M3 16h3a2 2 0 0 1 2 2v3"/>
+                <path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
+            </svg>
+        </button>
         <a href="{{ url_for('serve_book_file', book_id=book.id) }}?download=1" class="btn btn-secondary shrink-0">
             Download
         </a>
     </div>
 
-    <div id="pdf-toolbar" class="hidden items-center justify-center gap-2 text-sm">
+    <div id="pdf-toolbar" class="hidden items-center justify-center gap-2 text-sm" data-reader-chrome>
         <button id="pdf-prev" type="button" class="btn btn-secondary">Prev</button>
-        <span id="pdf-page" class="min-w-24 text-center text-slate-500 dark:text-slate-400">–</span>
+        <span id="pdf-page" class="min-w-32 text-center text-slate-500 dark:text-slate-400">–</span>
         <button id="pdf-next" type="button" class="btn btn-secondary">Next</button>
         <span class="mx-2 h-5 w-px bg-slate-200 dark:bg-slate-700"></span>
         <button id="pdf-zoom-out" type="button" class="btn btn-secondary" aria-label="Zoom out">−</button>
         <button id="pdf-zoom-in" type="button" class="btn btn-secondary" aria-label="Zoom in">+</button>
+        <span class="mx-2 h-5 w-px bg-slate-200 dark:bg-slate-700"></span>
+        <button id="pdf-fit" type="button" class="btn btn-secondary" title="Switch to fit page">Fit page</button>
+        <button id="pdf-spread" type="button" class="btn btn-secondary" aria-pressed="false" title="Two-page view">2 pages</button>
     </div>
 
-    <div id="epub-toolbar" class="hidden items-center justify-center gap-2 text-sm">
+    <div id="epub-toolbar" class="hidden items-center justify-center gap-2 text-sm" data-reader-chrome>
         <button id="epub-prev" type="button" class="btn btn-secondary">Prev</button>
         <button id="epub-next" type="button" class="btn btn-secondary">Next</button>
     </div>
@@ -40,7 +60,10 @@
 
     <div id="pdf-container"
         class="hidden flex-1 overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-4 dark:border-slate-700 dark:bg-slate-800">
-        <canvas id="pdf-canvas" class="mx-auto block shadow"></canvas>
+        <div id="pdf-pages" class="mx-auto flex w-fit items-start justify-center gap-2">
+            <canvas id="pdf-canvas" class="block shadow"></canvas>
+            <canvas id="pdf-canvas-2" class="hidden block shadow"></canvas>
+        </div>
     </div>
 
     <div id="epub-container"
@@ -83,6 +106,110 @@
     }
 
     setPercent(initialPercent);
+
+    const readerRoot = document.getElementById('reader-root');
+    const fullscreenButton = document.getElementById('reader-fullscreen');
+    const fullscreenExpand = document.getElementById('fs-expand');
+    const fullscreenCompress = document.getElementById('fs-compress');
+    const chromeElements = Array.from(document.querySelectorAll('[data-reader-chrome]'));
+
+    const CHROME_IDLE_MS = 2500;
+    let chromeTimer = null;
+    let chromeHovered = false;
+
+    function isFullscreen() {
+        return document.fullscreenElement === readerRoot ||
+            readerRoot.classList.contains('reader-pseudo-fullscreen');
+    }
+
+    function chromeHidden() {
+        return readerRoot.classList.contains('reader-chrome-hidden');
+    }
+
+    function setChromeHidden(hidden) {
+        if (chromeHidden() === hidden) return;
+        readerRoot.classList.toggle('reader-chrome-hidden', hidden);
+        window.dispatchEvent(new Event('reader:chrome'));
+    }
+
+    function scheduleChromeHide() {
+        clearTimeout(chromeTimer);
+        if (!isFullscreen() || chromeHovered) return;
+        chromeTimer = setTimeout(function () {
+            if (!chromeHovered) setChromeHidden(true);
+        }, CHROME_IDLE_MS);
+    }
+
+    function showChrome() {
+        setChromeHidden(false);
+        scheduleChromeHide();
+    }
+
+    function updateFullscreenButton() {
+        const active = isFullscreen();
+        fullscreenExpand.classList.toggle('hidden', active);
+        fullscreenCompress.classList.toggle('hidden', !active);
+        fullscreenButton.setAttribute('aria-pressed', String(active));
+    }
+
+    function syncFullscreenState() {
+        updateFullscreenButton();
+        if (isFullscreen()) {
+            showChrome();
+        } else {
+            clearTimeout(chromeTimer);
+            setChromeHidden(false);
+        }
+    }
+
+    async function toggleFullscreen() {
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else if (readerRoot.classList.contains('reader-pseudo-fullscreen')) {
+                readerRoot.classList.remove('reader-pseudo-fullscreen');
+            } else if (readerRoot.requestFullscreen) {
+                await readerRoot.requestFullscreen();
+            } else {
+                readerRoot.classList.add('reader-pseudo-fullscreen');
+            }
+        } catch (error) {
+            // Some browsers refuse fullscreen (iframes, permissions): use CSS.
+            readerRoot.classList.toggle('reader-pseudo-fullscreen');
+        }
+        syncFullscreenState();
+    }
+
+    fullscreenButton.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+
+    ['mousemove', 'mousedown', 'touchstart'].forEach(function (name) {
+        document.addEventListener(name, showChrome, { passive: true });
+    });
+    document.addEventListener('keydown', function (event) {
+        if ((event.key === 'f' || event.key === 'F') && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            toggleFullscreen();
+            return;
+        }
+        // Keep the chrome hidden while turning pages with the keyboard.
+        if (['ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'].indexOf(event.key) === -1) {
+            showChrome();
+        }
+    });
+
+    // Do not hide the controls while the pointer is over them.
+    chromeElements.forEach(function (element) {
+        element.addEventListener('mouseenter', function () {
+            chromeHovered = true;
+            clearTimeout(chromeTimer);
+            setChromeHidden(false);
+        });
+        element.addEventListener('mouseleave', function () {
+            chromeHovered = false;
+            scheduleChromeHide();
+        });
+    });
 
     let saveTimer = null;
     let pendingPayload = null;
@@ -127,7 +254,10 @@
 
         const container = document.getElementById('pdf-container');
         const canvas = document.getElementById('pdf-canvas');
+        const secondCanvas = document.getElementById('pdf-canvas-2');
         const pageLabel = document.getElementById('pdf-page');
+        const fitButton = document.getElementById('pdf-fit');
+        const spreadButton = document.getElementById('pdf-spread');
 
         container.classList.remove('hidden');
         showToolbar('pdf-toolbar');
@@ -137,8 +267,35 @@
         if (!pageNumber || pageNumber < 1 || pageNumber > pdf.numPages) pageNumber = 1;
 
         let zoom = 1;
+        let fitMode = 'width';
+        let spread = false;
         let rendering = false;
         let queued = false;
+
+        function maxAnchor() {
+            if (!spread) return pdf.numPages;
+            return pdf.numPages % 2 === 0 ? pdf.numPages - 1 : pdf.numPages;
+        }
+
+        function visiblePages() {
+            const pages = [pageNumber];
+            if (spread && pageNumber + 1 <= pdf.numPages) pages.push(pageNumber + 1);
+            return pages;
+        }
+
+        async function renderPage(page, target, scale) {
+            const viewport = page.getViewport({ scale: scale });
+            const ratio = window.devicePixelRatio || 1;
+
+            target.width = Math.floor(viewport.width * ratio);
+            target.height = Math.floor(viewport.height * ratio);
+            target.style.width = Math.floor(viewport.width) + 'px';
+            target.style.height = Math.floor(viewport.height) + 'px';
+
+            const params = { canvasContext: target.getContext('2d'), viewport: viewport };
+            if (ratio !== 1) params.transform = [ratio, 0, 0, ratio, 0, 0];
+            await page.render(params).promise;
+        }
 
         async function render() {
             if (rendering) {
@@ -147,24 +304,41 @@
             }
             rendering = true;
             try {
-                const page = await pdf.getPage(pageNumber);
-                const unscaled = page.getViewport({ scale: 1 });
-                const available = Math.max(320, container.clientWidth - 32);
-                const viewport = page.getViewport({ scale: (available / unscaled.width) * zoom });
-                const ratio = window.devicePixelRatio || 1;
+                const pages = visiblePages();
+                const pageObjects = await Promise.all(pages.map(function (number) {
+                    return pdf.getPage(number);
+                }));
+                const baseViews = pageObjects.map(function (page) {
+                    return page.getViewport({ scale: 1 });
+                });
+                const gap = pages.length > 1 ? 8 : 0;
+                const totalWidth = baseViews.reduce(function (sum, view) {
+                    return sum + view.width;
+                }, 0) + gap;
+                const maxHeight = Math.max.apply(null, baseViews.map(function (view) {
+                    return view.height;
+                }));
+                const availableWidth = Math.max(200, container.clientWidth - 32);
+                const availableHeight = Math.max(200, container.clientHeight - 32);
 
-                canvas.width = Math.floor(viewport.width * ratio);
-                canvas.height = Math.floor(viewport.height * ratio);
-                canvas.style.width = Math.floor(viewport.width) + 'px';
-                canvas.style.height = Math.floor(viewport.height) + 'px';
+                let scale = fitMode === 'page'
+                    ? Math.min(availableWidth / totalWidth, availableHeight / maxHeight)
+                    : availableWidth / totalWidth;
+                scale *= zoom;
 
-                const params = { canvasContext: canvas.getContext('2d'), viewport: viewport };
-                if (ratio !== 1) params.transform = [ratio, 0, 0, ratio, 0, 0];
-                await page.render(params).promise;
+                await renderPage(pageObjects[0], canvas, scale);
+                if (pageObjects[1]) {
+                    secondCanvas.classList.remove('hidden');
+                    await renderPage(pageObjects[1], secondCanvas, scale);
+                } else {
+                    secondCanvas.classList.add('hidden');
+                }
 
-                pageLabel.textContent = pageNumber + ' / ' + pdf.numPages;
-                setPercent((pageNumber / pdf.numPages) * 100);
-                saveProgress(String(pageNumber), percent);
+                const lastPage = pages[pages.length - 1];
+                pageLabel.textContent = (pages.length > 1 ? pages[0] + '–' + lastPage : String(lastPage)) +
+                    ' / ' + pdf.numPages;
+                setPercent((lastPage / pdf.numPages) * 100);
+                saveProgress(String(lastPage), percent);
             } catch (error) {
                 showError('Could not render the PDF: ' + error.message);
             } finally {
@@ -177,10 +351,25 @@
         }
 
         function go(delta) {
-            const next = pageNumber + delta;
-            if (next < 1 || next > pdf.numPages) return;
+            const step = spread ? 2 : 1;
+            let next = pageNumber + delta * step;
+            if (next < 1) next = 1;
+            if (next > maxAnchor()) next = maxAnchor();
+            if (spread && next % 2 === 0) next -= 1;
+            if (next === pageNumber) return;
             pageNumber = next;
             render();
+        }
+
+        function updateFitButton() {
+            const toPage = fitMode === 'width';
+            fitButton.textContent = toPage ? 'Fit page' : 'Fit width';
+            fitButton.title = toPage ? 'Switch to fit page' : 'Switch to fit width';
+        }
+
+        function updateSpreadButton() {
+            spreadButton.setAttribute('aria-pressed', String(spread));
+            spreadButton.textContent = spread ? '1 page' : '2 pages';
         }
 
         document.getElementById('pdf-prev').addEventListener('click', function () { go(-1); });
@@ -193,10 +382,36 @@
             zoom = Math.max(0.5, zoom / 1.2);
             render();
         });
+        fitButton.addEventListener('click', function () {
+            fitMode = fitMode === 'page' ? 'width' : 'page';
+            zoom = 1;
+            updateFitButton();
+            render();
+        });
+        spreadButton.addEventListener('click', function () {
+            spread = !spread;
+            if (spread && pageNumber % 2 === 0) pageNumber = Math.max(1, pageNumber - 1);
+            if (pageNumber > maxAnchor()) pageNumber = maxAnchor();
+            updateSpreadButton();
+            render();
+        });
         document.addEventListener('keydown', function (event) {
             if (event.key === 'ArrowRight' || event.key === 'PageDown') go(1);
             if (event.key === 'ArrowLeft' || event.key === 'PageUp') go(-1);
         });
+
+        updateFitButton();
+        updateSpreadButton();
+
+        // Re-fit the page(s) after a resize or fullscreen change.
+        let resizeTimer = null;
+        function scheduleRender() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(render, 150);
+        }
+        window.addEventListener('resize', scheduleRender);
+        document.addEventListener('fullscreenchange', scheduleRender);
+        window.addEventListener('reader:chrome', scheduleRender);
 
         await render();
     }
@@ -242,6 +457,12 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'ArrowRight' || event.key === 'PageDown') rendition.next();
             if (event.key === 'ArrowLeft' || event.key === 'PageUp') rendition.prev();
+        });
+        // Keyboard events inside the EPUB iframe do not reach the parent document.
+        rendition.on('keyup', function (event) {
+            if (event.key === 'ArrowRight' || event.key === 'PageDown') rendition.next();
+            if (event.key === 'ArrowLeft' || event.key === 'PageUp') rendition.prev();
+            if (event.key === 'f' || event.key === 'F') toggleFullscreen();
         });
 
         try {
