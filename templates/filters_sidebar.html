@@ -39,115 +39,119 @@
 {% endmacro %}
 
 {% macro filter_toggle(label, target_id) %}
-    <button type="button" class="filter-toggle flex h-8 w-8 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-        aria-label="Toggle {{ label }} filter" aria-controls="{{ target_id }}" aria-expanded="true">
-        <svg class="h-3.5 w-3.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-    </button>
+    <h3 class="mb-1">
+        <button type="button"
+                class="filter-toggle flex w-full items-center justify-between rounded-md px-1.5 py-1 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200 dark:hover:bg-slate-700/60 [&.collapsed>svg]:-rotate-90"
+                aria-controls="{{ target_id }}" aria-expanded="true">
+            <span>{{ label }}</span>
+            <svg class="h-3.5 w-3.5 text-slate-400 transition-transform" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+    </h3>
 {% endmacro %}
 
-<aside id="filters-sidebar" class="h-fit rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 lg:min-h-0 lg:overflow-y-auto">
-    <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Filters</h2>
+<aside id="filters-sidebar"
+       class="h-fit rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 lg:min-h-0 lg:overflow-y-auto">
+    <div class="mb-2 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-white">Filters</h2>
         {% if active_filters %}
-        <a href="{{ url_for('homepage') }}"
-            class="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-            hx-get="{{ url_for('homepage') }}" hx-target="#books-list" hx-push-url="true">
-            Reset
-        </a>
+            <a href="{{ url_for('homepage') }}"
+               class="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+               hx-get="{{ url_for('homepage') }}" hx-target="#books-list" hx-push-url="true">
+                Reset
+            </a>
         {% endif %}
     </div>
 
     {% set active_tags = request.query_params.get('tags', '').split(',') | map('trim') | reject('equalto', '') | list %}
     {% if active_filters or active_tags %}
-    <div class="mb-4 border-b border-slate-100 pb-4 dark:border-slate-700">
-        <div class="flex flex-wrap gap-1.5">
-            {% for key, value in active_filters.items() %}
-            <span class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
+        <div class="mb-3 border-b border-slate-100 pb-3 dark:border-slate-700">
+            <div class="flex flex-wrap gap-1.5">
+                {% for key, value in active_filters.items() %}
+                    <span class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
                 {% if key == 'catalog_id' %}
-                catalog: {{ active_catalog.name if active_catalog else value }}
+                    catalog: {{ active_catalog.name if active_catalog else value }}
                 {% elif key == 'publication_name' %}
-                publication: {{ value }}
+                    publication: {{ value }}
                 {% else %}
-                {{ key }}: {{ value }}
+                    {{ key }}: {{ value }}
                 {% endif %}
-                <button type="button" class="font-bold leading-none text-indigo-200 transition-colors hover:text-white"
-                    hx-get="{{ clear_filter_url(key) }}" hx-target="#books-list" hx-push-url="true"
-                    title="Remove {{ key }} filter" aria-label="Remove {{ key }} filter">×</button>
+                        <button type="button"
+                                class="font-bold leading-none text-indigo-200 transition-colors hover:text-white"
+                                hx-get="{{ clear_filter_url(key) }}" hx-target="#books-list" hx-push-url="true"
+                                title="Remove {{ key }} filter" aria-label="Remove {{ key }} filter">×</button>
             </span>
-            {% endfor %}
-            {% for tag_name in active_tags %}
-            <span class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
+                {% endfor %}
+                {% for tag_name in active_tags %}
+                    <span class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
                 tag: {{ tag_name }}
-                <button type="button" class="tag-remove font-bold leading-none text-indigo-200 transition-colors hover:text-white"
-                    data-tag="{{ tag_name }}"
-                    title="Remove {{ tag_name }} tag" aria-label="Remove {{ tag_name }} tag">×</button>
+                <button type="button"
+                        class="tag-remove font-bold leading-none text-indigo-200 transition-colors hover:text-white"
+                        data-tag="{{ tag_name }}"
+                        title="Remove {{ tag_name }} tag" aria-label="Remove {{ tag_name }} tag">×</button>
             </span>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
     {% endif %}
 
     <!-- Catalogs -->
     {% if catalogs %}
-    <div class="filter-section mb-4" data-section="catalogs">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Catalog</h3>
+        <div class="filter-section mb-3" data-section="catalogs">
             {{ filter_toggle('Catalog', 'catalogs-filter-options') }}
+            <div class="filter-content space-y-1" id="catalogs-filter-options">
+                {% set all_active = not active_filters.catalog_id %}
+                <a href="{{ clear_filter_url('catalog_id') }}" hx-get="{{ clear_filter_url('catalog_id') }}"
+                   hx-target="#books-list" hx-push-url="true"
+                   class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if all_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                    All catalogs
+                </a>
+                {% for catalog in catalogs %}
+                    {% set is_active = active_filters.catalog_id == catalog.id %}
+                    <a href="{{ catalog_filter_url(catalog.id) }}" hx-get="{{ catalog_filter_url(catalog.id) }}"
+                       hx-target="#books-list" hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}"
+                       title="{{ catalog.name }}{% if not catalog.enabled %} (sync disabled){% endif %}">
+                        {{ catalog.name }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content space-y-1" id="catalogs-filter-options">
-            {% set all_active = not active_filters.catalog_id %}
-            <a href="{{ clear_filter_url('catalog_id') }}" hx-get="{{ clear_filter_url('catalog_id') }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if all_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
-                All catalogs
-            </a>
-            {% for catalog in catalogs %}
-            {% set is_active = active_filters.catalog_id == catalog.id %}
-            <a href="{{ catalog_filter_url(catalog.id) }}" hx-get="{{ catalog_filter_url(catalog.id) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}"
-                title="{{ catalog.name }}{% if not catalog.enabled %} (sync disabled){% endif %}">
-                {{ catalog.name }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 
     <!-- Publications -->
     {% if publications %}
-    <div class="filter-section mb-4" data-section="publications">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Publication</h3>
+        <div class="filter-section mb-3" data-section="publications">
             {{ filter_toggle('Publication', 'publications-filter-options') }}
+            <div class="filter-content space-y-1" id="publications-filter-options">
+                {% for publication in publications %}
+                    {% set is_active = active_filters.publication_name == publication %}
+                    <a href="{{ toggle_filter_url('publication_name', publication, is_active) }}"
+                       hx-get="{{ toggle_filter_url('publication_name', publication, is_active) }}"
+                       hx-target="#books-list" hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}"
+                       title="{{ publication }}">
+                        {{ publication }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content space-y-1" id="publications-filter-options">
-            {% for publication in publications %}
-            {% set is_active = active_filters.publication_name == publication %}
-            <a href="{{ toggle_filter_url('publication_name', publication, is_active) }}" hx-get="{{ toggle_filter_url('publication_name', publication, is_active) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}"
-                title="{{ publication }}">
-                {{ publication }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 
     <!-- Tags -->
-    <div class="filter-section mb-4" data-section="tags">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tags</h3>
-            {{ filter_toggle('Tags', 'tags-filter-options') }}
-        </div>
+    <div class="filter-section mb-3" data-section="tags">
+        {{ filter_toggle('Tags', 'tags-filter-options') }}
         <div class="filter-content" id="tags-filter-options">
             <div class="flex flex-wrap gap-1.5">
                 {% for tag in tags %}
-                <a href="{{ request.url.include_query_params(tags=(active_tags + [tag.name]) | join(','), page=1) }}" class="tag-filter chip cursor-pointer lowercase transition-colors hover:bg-indigo-100 hover:text-indigo-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300"
-                    data-tag="{{ tag.name }}">{{ tag.name }}</a>
+                    <a href="{{ request.url.include_query_params(tags=(active_tags + [tag.name]) | join(','), page=1) }}"
+                       class="tag-filter chip cursor-pointer lowercase transition-colors hover:bg-indigo-100 hover:text-indigo-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300"
+                       data-tag="{{ tag.name }}">{{ tag.name }}</a>
                 {% else %}
-                <span class="text-xs text-slate-500 dark:text-slate-400">No tags</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">No tags</span>
                 {% endfor %}
             </div>
         </div>
@@ -155,97 +159,92 @@
 
     <!-- Authors -->
     {% if authors %}
-    <div class="filter-section mb-4" data-section="authors">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Authors</h3>
+        <div class="filter-section mb-3" data-section="authors">
             {{ filter_toggle('Authors', 'authors-filter-options') }}
+            <div class="filter-content max-h-40 overflow-y-auto pr-1" id="authors-filter-options">
+                {% for author in authors %}
+                    {% set is_active = active_filters.author == author.name %}
+                    <a href="{{ toggle_filter_url('author', author.name, is_active) }}"
+                       hx-get="{{ toggle_filter_url('author', author.name, is_active) }}" hx-target="#books-list"
+                       hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                        {{ author.name }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content max-h-40 overflow-y-auto pr-1" id="authors-filter-options">
-            {% for author in authors %}
-            {% set is_active = active_filters.author == author.name %}
-            <a href="{{ toggle_filter_url('author', author.name, is_active) }}" hx-get="{{ toggle_filter_url('author', author.name, is_active) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
-                {{ author.name }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 
     <!-- Languages -->
     {% if languages %}
-    <div class="filter-section mb-4" data-section="languages">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Languages</h3>
+        <div class="filter-section mb-3" data-section="languages">
             {{ filter_toggle('Languages', 'languages-filter-options') }}
+            <div class="filter-content max-h-40 overflow-y-auto pr-1" id="languages-filter-options">
+                {% for language in languages %}
+                    {% set is_active = active_filters.language == language.code %}
+                    <a href="{{ toggle_filter_url('language', language.code, is_active) }}"
+                       hx-get="{{ toggle_filter_url('language', language.code, is_active) }}" hx-target="#books-list"
+                       hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                        {{ language.name }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content max-h-40 overflow-y-auto pr-1" id="languages-filter-options">
-            {% for language in languages %}
-            {% set is_active = active_filters.language == language.code %}
-            <a href="{{ toggle_filter_url('language', language.code, is_active) }}" hx-get="{{ toggle_filter_url('language', language.code, is_active) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
-                {{ language.name }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 
     <!-- Publishers -->
     {% if publishers %}
-    <div class="filter-section mb-4" data-section="publishers">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Publishers</h3>
+        <div class="filter-section mb-3" data-section="publishers">
             {{ filter_toggle('Publishers', 'publishers-filter-options') }}
+            <div class="filter-content max-h-40 overflow-y-auto pr-1" id="publishers-filter-options">
+                {% for publisher in publishers %}
+                    {% set is_active = active_filters.publisher == publisher.name %}
+                    <a href="{{ toggle_filter_url('publisher', publisher.name, is_active) }}"
+                       hx-get="{{ toggle_filter_url('publisher', publisher.name, is_active) }}" hx-target="#books-list"
+                       hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                        {{ publisher.name }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content max-h-40 overflow-y-auto pr-1" id="publishers-filter-options">
-            {% for publisher in publishers %}
-            {% set is_active = active_filters.publisher == publisher.name %}
-            <a href="{{ toggle_filter_url('publisher', publisher.name, is_active) }}" hx-get="{{ toggle_filter_url('publisher', publisher.name, is_active) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
-                {{ publisher.name }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 
     <!-- Series -->
     {% if series_list %}
-    <div class="filter-section mb-4" data-section="series">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Series</h3>
+        <div class="filter-section mb-3" data-section="series">
             {{ filter_toggle('Series', 'series-filter-options') }}
+            <div class="filter-content max-h-40 overflow-y-auto pr-1" id="series-filter-options">
+                {% for series in series_list %}
+                    {% set is_active = active_filters.series == series.name %}
+                    <a href="{{ toggle_filter_url('series', series.name, is_active) }}"
+                       hx-get="{{ toggle_filter_url('series', series.name, is_active) }}" hx-target="#books-list"
+                       hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                        {{ series.name }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content max-h-40 overflow-y-auto pr-1" id="series-filter-options">
-            {% for series in series_list %}
-            {% set is_active = active_filters.series == series.name %}
-            <a href="{{ toggle_filter_url('series', series.name, is_active) }}" hx-get="{{ toggle_filter_url('series', series.name, is_active) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
-                {{ series.name }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 
     <!-- Formats -->
     {% if formats %}
-    <div class="filter-section" data-section="formats">
-        <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Formats</h3>
+        <div class="filter-section" data-section="formats">
             {{ filter_toggle('Formats', 'formats-filter-options') }}
+            <div class="filter-content max-h-40 overflow-y-auto pr-1" id="formats-filter-options">
+                {% for format in formats %}
+                    {% set is_active = active_filters.format == format %}
+                    <a href="{{ toggle_filter_url('format', format, is_active) }}"
+                       hx-get="{{ toggle_filter_url('format', format, is_active) }}" hx-target="#books-list"
+                       hx-push-url="true"
+                       class="block truncate rounded px-2 py-0.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                        {{ format }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="filter-content max-h-40 overflow-y-auto pr-1" id="formats-filter-options">
-            {% for format in formats %}
-            {% set is_active = active_filters.format == format %}
-            <a href="{{ toggle_filter_url('format', format, is_active) }}" hx-get="{{ toggle_filter_url('format', format, is_active) }}" hx-target="#books-list" hx-push-url="true"
-                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
-                {{ format }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 </aside>
 

@@ -3,194 +3,211 @@
 {% block title %}{{ book.title }} — BookVault{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-    <a href="{{ back_url }}"
-        class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-        Back to library
-    </a>
+    <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+        <a href="{{ back_url }}"
+           class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to library
+        </a>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
-        <div class="flex flex-col gap-8 sm:flex-row">
-            <div class="mx-auto shrink-0 sm:mx-0">
-                {% if book.cover %}
-                <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}" alt="{{ book.title }} cover"
-                    class="h-64 w-44 rounded-lg object-cover shadow-md ring-1 ring-slate-900/5">
-                {% else %}
-                <div
-                    class="flex h-64 w-44 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-900/5 dark:bg-slate-700">
-                    <svg class="h-12 w-12 text-slate-300 dark:text-slate-500" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                    </svg>
-                </div>
-                {% endif %}
-                {% set readable = book.file_path and (book.file_path.lower().endswith('.pdf') or book.file_path.lower().endswith('.epub')) %}
-                {% if book.file_path %}
-                {% set read_href = (url_for('read_book', book_id=book.id) ~ '?next=' ~ (back_url|urlencode)) if readable else url_for('serve_book_file', book_id=book.id) %}
-                <a href="{{ read_href }}"
-                    {% if not readable %}target="_blank" rel="noopener"{% endif %}
-                    class="btn btn-primary mt-4 w-full">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                    {{ 'Read' if readable else 'Open' }}
-                </a>
-                <a href="{{ url_for('serve_book_file', book_id=book.id) }}?download=1" class="btn btn-secondary mt-2 w-full">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <path d="M7 10l5 5 5-5"/>
-                        <path d="M12 15V3"/>
-                    </svg>
-                    Download
-                </a>
-                {% if book.reading_percent %}
-                <p class="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
-                    {{ book.reading_percent|round(0)|int }}% read
-                </p>
-                {% endif %}
-                {% endif %}
-                <a href="{{ url_for('edit_book', book_id=book.id) ~ '?next=' ~ (back_url | urlencode) }}" class="btn btn-secondary mt-2 w-full">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                    Edit metadata
-                </a>
-            </div>
-
-            <div class="min-w-0 flex-1">
-                {% if book.catalog.kind == 'magazine' and (book.publication_name or book.issue_label or book.issue_number) %}
-                <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                    {{ book.publication_name or book.title }}{% if book.issue_number %} #{{ book.issue_number }}{% endif %}{% if book.issue_label %} · {{ book.issue_label }}{% endif %}{% if book.issue_year %} ({{ '%02d' % book.issue_month if book.issue_month else '' }}{% if book.issue_month and book.issue_year %}/{{ book.issue_year }}{% elif book.issue_year %}{{ book.issue_year }}{% endif %}){% endif %}
-                </h1>
-                <p class="mt-1.5 text-slate-600 dark:text-slate-300">{{ book.title }}</p>
-                {% if book.authors %}
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
-                {% endif %}
-                {% else %}
-                <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ book.title }}</h1>
-                {% if book.authors %}
-                <p class="mt-1.5 text-slate-600 dark:text-slate-300">{{ book.authors|join(', ', attribute='name') }}</p>
-                {% endif %}
-                {% endif %}
-
-                {% if book.description %}
-                <div class="prose prose-sm mt-4 max-w-none text-slate-600 dark:prose-invert dark:text-slate-300">
-                    {{ book.description|safe }}
-                </div>
-                {% endif %}
-
-                <dl class="mt-6 space-y-2.5 text-sm">
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Edition</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.edition or '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">ISBN</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.isbn or '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Format</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.format or '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Publisher</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.publisher.name if book.publisher else '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Language</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">
-                            {{ book.language.name if book.language else (book.language_code or '—') }}
-                        </dd>
-                    </div>
-                    {% if edition_siblings %}
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Other editions</dt>
-                        <dd class="flex flex-wrap items-center gap-2">
-                            {% for sibling in edition_siblings %}
-                            <a href="{{ url_for('show_book', book_id=sibling.id) }}?next={{ back_url | urlencode }}"
-                                class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
-                                title="{{ sibling.title }}">
-                                {{ sibling.language.name if sibling.language else (sibling.language_code or '?') }}
-                            </a>
-                            {% endfor %}
-                        </dd>
-                    </div>
+        <div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
+            <div class="flex flex-col gap-8 sm:flex-row">
+                <div class="mx-auto shrink-0 sm:mx-0">
+                    {% if book.cover %}
+                        <img src="{{ url_for('static', path='cover_images/' ~ book.cover) }}"
+                             alt="{{ book.title }} cover"
+                             class="h-64 w-44 rounded-lg object-cover shadow-md ring-1 ring-slate-900/5">
+                    {% else %}
+                        <div
+                                class="flex h-64 w-44 items-center justify-center rounded-lg bg-slate-100 ring-1 ring-slate-900/5 dark:bg-slate-700">
+                            <svg class="h-12 w-12 text-slate-300 dark:text-slate-500" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                 stroke-linejoin="round">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                        </div>
                     {% endif %}
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Series</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.series.name if book.series else '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Collection</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.collection[0].name if book.collection else '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Added</dt>
-                        <dd class="text-slate-800 dark:text-slate-200">{{ book.added_at.strftime('%Y-%m-%d') if book.added_at else '—' }}</dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Links</dt>
-                        <dd class="flex flex-wrap items-center gap-2">
-                            {% if book.amazon_url %}
-                            <a href="{{ book.amazon_url }}" target="_blank" rel="noopener"
-                                class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
-                                Amazon
-                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                    <path d="M15 3h6v6"/>
-                                    <path d="M10 14 21 3"/>
-                                </svg>
-                            </a>
-                            {% endif %}
-                            {% if book.goodreads_url %}
-                            <a href="{{ book.goodreads_url }}" target="_blank" rel="noopener"
-                                class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
-                                Goodreads
-                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                    <path d="M15 3h6v6"/>
-                                    <path d="M10 14 21 3"/>
-                                </svg>
-                            </a>
-                            {% endif %}
-                            {% if not book.amazon_url and not book.goodreads_url %}—{% endif %}
-                        </dd>
-                    </div>
-                    <div class="flex gap-4">
-                        <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Tags</dt>
-                        <dd>
+                    {% set readable = book.file_path and (book.file_path.lower().endswith('.pdf') or book.file_path.lower().endswith('.epub')) %}
+                    {% if book.file_path %}
+                        {% set read_href = (url_for('read_book', book_id=book.id) ~ '?next=' ~ (back_url|urlencode)) if readable else url_for('serve_book_file', book_id=book.id) %}
+                        <a href="{{ read_href }}"
+                           {% if not readable %}target="_blank" rel="noopener"{% endif %}
+                           class="btn btn-primary mt-4 w-full">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            {{ 'Read' if readable else 'Open' }}
+                        </a>
+                        <a href="{{ url_for('serve_book_file', book_id=book.id) }}?download=1"
+                           class="btn btn-secondary mt-2 w-full">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <path d="M7 10l5 5 5-5"/>
+                                <path d="M12 15V3"/>
+                            </svg>
+                            Download
+                        </a>
+                        {% if book.reading_percent %}
+                            <p class="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+                                {{ book.reading_percent|round(0)|int }}% read
+                            </p>
+                        {% endif %}
+                    {% endif %}
+                    <a href="{{ url_for('edit_book', book_id=book.id) ~ '?next=' ~ (back_url | urlencode) }}"
+                       class="btn btn-secondary mt-2 w-full">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Edit metadata
+                    </a>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    {% if book.catalog.kind == 'magazine' and (book.publication_name or book.issue_label or book.issue_number) %}
+                        <h1 class="font-serif text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                            {{ book.publication_name or book.title }}{% if book.issue_number %} #
+                                {{ book.issue_number }}{% endif %}{% if book.issue_label %} ·
+                                {{ book.issue_label }}{% endif %}{% if book.issue_year %} (
+                                {{ '%02d' % book.issue_month if book.issue_month else '' }}
+                                        {% if book.issue_month and book.issue_year %}/
+                                            {{ book.issue_year }}{% elif book.issue_year %}
+                                            {{ book.issue_year }}{% endif %}){% endif %}
+                        </h1>
+                        <p class="mt-1.5 text-slate-600 dark:text-slate-300">{{ book.title }}</p>
+                        {% if book.authors %}
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
+                        {% endif %}
+                    {% else %}
+                        <h1 class="font-serif text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">{{ book.title }}</h1>
+                        {% if book.authors %}
+                            <p class="mt-1.5 text-slate-600 dark:text-slate-300">{{ book.authors|join(', ', attribute='name') }}</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if book.description %}
+                        <div class="prose prose-sm mt-4 max-w-none text-slate-600 dark:prose-invert dark:text-slate-300">
+                            {{ book.description|safe }}
+                        </div>
+                    {% endif %}
+
+                    <dl class="mt-6 space-y-2.5 text-sm">
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Edition</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.edition or '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">ISBN</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.isbn or '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Format</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.format or '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Publisher</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.publisher.name if book.publisher else '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Language</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">
+                                {{ book.language.name if book.language else (book.language_code or '—') }}
+                            </dd>
+                        </div>
+                        {% if edition_siblings %}
+                            <div class="flex gap-4">
+                                <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Other
+                                    editions
+                                </dt>
+                                <dd class="flex flex-wrap items-center gap-2">
+                                    {% for sibling in edition_siblings %}
+                                        <a href="{{ url_for('show_book', book_id=sibling.id) }}?next={{ back_url | urlencode }}"
+                                           class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300"
+                                           title="{{ sibling.title }}">
+                                            {{ sibling.language.name if sibling.language else (sibling.language_code or '?') }}
+                                        </a>
+                                    {% endfor %}
+                                </dd>
+                            </div>
+                        {% endif %}
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Series</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.series.name if book.series else '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Collection</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.collection[0].name if book.collection else '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Added</dt>
+                            <dd class="text-slate-800 dark:text-slate-200">{{ book.added_at.strftime('%Y-%m-%d') if book.added_at else '—' }}</dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Links</dt>
+                            <dd class="flex flex-wrap items-center gap-2">
+                                {% if book.amazon_url %}
+                                    <a href="{{ book.amazon_url }}" target="_blank" rel="noopener"
+                                       class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
+                                        Amazon
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2">
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                            <path d="M15 3h6v6"/>
+                                            <path d="M10 14 21 3"/>
+                                        </svg>
+                                    </a>
+                                {% endif %}
+                                {% if book.goodreads_url %}
+                                    <a href="{{ book.goodreads_url }}" target="_blank" rel="noopener"
+                                       class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300">
+                                        Goodreads
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2">
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                            <path d="M15 3h6v6"/>
+                                            <path d="M10 14 21 3"/>
+                                        </svg>
+                                    </a>
+                                {% endif %}
+                                {% if not book.amazon_url and not book.goodreads_url %}—{% endif %}
+                            </dd>
+                        </div>
+                        <div class="flex gap-4">
+                            <dt class="w-32 shrink-0 font-medium text-slate-500 dark:text-slate-400">Tags</dt>
+                            <dd>
                             <span id="tags-container" class="flex flex-wrap items-center gap-1.5">
                                 {% for tag in book.tags %}
-                                <span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium lowercase text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                                    <span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium lowercase text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
                                     {{ tag.name }}
                                     <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}"
-                                        hx-target="#tags-container" class="font-bold leading-none text-indigo-400 transition-colors hover:text-red-600"
-                                        title="Remove {{ tag.name }}">×</button>
+                                            hx-target="#tags-container"
+                                            class="font-bold leading-none text-indigo-400 transition-colors hover:text-red-600"
+                                            title="Remove {{ tag.name }}">×</button>
                                 </span>
                                 {% endfor %}
-                                {% if not book.tags %}<span class="text-slate-500 dark:text-slate-400">—</span>{% endif %}
+                                {% if not book.tags %}
+                                    <span class="text-slate-500 dark:text-slate-400">—</span>{% endif %}
                             </span>
-                        </dd>
-                    </div>
-                </dl>
+                            </dd>
+                        </div>
+                    </dl>
 
-                <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container"
-                    class="mt-4 flex gap-2">
-                    <label for="new-tag" class="sr-only">New tag</label>
-                    <input type="text" id="new-tag" name="tag_name" placeholder="New tag…" required class="input w-40 py-1">
-                    <button type="submit" class="btn btn-secondary py-1">Add tag</button>
-                </form>
+                    <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container"
+                          class="mt-4 flex gap-2">
+                        <label for="new-tag" class="sr-only">New tag</label>
+                        <input type="text" id="new-tag" name="tag_name" placeholder="New tag…" required
+                               class="input w-40 py-1">
+                        <button type="submit" class="btn btn-secondary py-1">Add tag</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
