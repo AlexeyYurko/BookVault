@@ -37,7 +37,7 @@
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span>{{ task.processed }} / {{ task.total }} ({{ task.added }} added, {{ task.skipped }} skipped{% if task.errors %}, {{ task.errors }} errors{% endif %})</span>
-            <span class="max-w-[200px] truncate">{{ task.current_file or 'Processing...' }}</span>
+            <span class="max-w-[240px] truncate">{{ task.current_catalog ~ ': ' if task.current_catalog else '' }}{{ task.current_file or 'Processing...' }}</span>
         </div>
     </div>
 </div>

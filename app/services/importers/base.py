@@ -3,6 +3,7 @@ import logging
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from app.services.importers.context import ImportContext
 from app.services.importers.pipeline import run_pipeline
@@ -14,12 +15,16 @@ from app.services.importers.steps import (
     EditionExtractionStep,
     EditionGroupStep,
     ExtractMetadataStep,
+    IssueExtractionStep,
     KeywordEnrichmentStep,
     LanguageResolutionStep,
     PathTagEnrichmentStep,
     PublisherResolutionStep,
     TagResolutionStep,
 )
+
+if TYPE_CHECKING:
+    from app.models import Catalog
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +45,10 @@ class BookMetadata:
 class BookImporter:
     FORMAT = None
 
-    def __init__(self, file, tags, file_path: str | None = None):
+    def __init__(self, file, tags, catalog: "Catalog", file_path: str | None = None):
         self.file = file
         self.tags = tags
+        self.catalog = catalog
         self.file_path = file_path
         self._checksum: str | None = None
 
@@ -89,6 +95,7 @@ class BookImporter:
             PathTagEnrichmentStep(),
             KeywordEnrichmentStep(),
             EditionExtractionStep(),
+            IssueExtractionStep(),
             LanguageResolutionStep(),
             AuthorResolutionStep(),
             PublisherResolutionStep(),
@@ -143,8 +150,22 @@ class BookImporter:
             book.tags = ctx.db_tags
         if "format" not in protected:
             book.format = self.FORMAT
+        if book.catalog.kind == "magazine":
+            self.update_magazine_data(book, ctx)
         book.checksum = ctx.checksum
         book.cover = ctx.cover
         book.file_path = self.file_path
         store.session.flush()
         return True
+
+    def update_magazine_data(self, book, ctx: ImportContext):
+        if book.publication_name is None and ctx.metadata and ctx.metadata.title:
+            book.publication_name = ctx.metadata.title
+        if book.issue_label is None and getattr(ctx, "book_issue_label", None):
+            book.issue_label = ctx.book_issue_label
+        if book.issue_number is None and getattr(ctx, "book_issue_number", None):
+            book.issue_number = ctx.book_issue_number
+        if book.issue_year is None and getattr(ctx, "book_issue_year", None):
+            book.issue_year = ctx.book_issue_year
+        if book.issue_month is None and getattr(ctx, "book_issue_month", None):
+            book.issue_month = ctx.book_issue_month

@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
 
-from app.config import settings
 from app.db import Session
+from app.models import Catalog
 from app.repositories.data_store import DataStore
 from app.services.directory_scanner import DirectoryScanner
 from app.services.importers.dedup_guard import release, try_claim
@@ -17,9 +17,7 @@ from app.services.importers.filesystem import PathImporter
 logger = logging.getLogger(__name__)
 
 MAX_FINISHED_TASKS = 20
-
 ALL_FOLDERS = '__all__'
-
 SCOPE_PREVIEW_LIMIT = 3
 
 
@@ -34,11 +32,11 @@ def validate_folder_name(name: str) -> str | None:
     return None
 
 
-def resolve_selected_folders(books_dir: Path, names: list[str]) -> tuple[list[Path], list[str]]:
-    """Validate folder names against the books directory and return scan roots."""
+def resolve_selected_folders(catalog_root: Path, names: list[str]) -> tuple[list[Path], list[str]]:
+    """Validate folder names against the catalog root and return scan roots."""
     folders: list[Path] = []
     errors: list[str] = []
-    books_root = books_dir.resolve()
+    resolved_root = catalog_root.resolve()
 
     for name in names:
         error = validate_folder_name(name)
@@ -46,7 +44,7 @@ def resolve_selected_folders(books_dir: Path, names: list[str]) -> tuple[list[Pa
             errors.append(f'{name}: {error}')
             continue
 
-        folder = books_dir / name
+        folder = catalog_root / name
         try:
             resolved = folder.resolve()
         except (OSError, RuntimeError) as exc:
@@ -56,13 +54,24 @@ def resolve_selected_folders(books_dir: Path, names: list[str]) -> tuple[list[Pa
         if not resolved.is_dir():
             errors.append(f'{name}: folder not found')
             continue
-        if resolved.parent != books_root:
-            errors.append(f'{name}: not a subfolder of the books directory')
+        if resolved.parent != resolved_root:
+            errors.append(f'{name}: not a direct subfolder of the catalog')
             continue
 
         folders.append(folder)
 
     return folders, errors
+
+
+def list_first_level_folders(catalog: Catalog) -> tuple[list[str], str | None]:
+    root = Path(catalog.root_path)
+    if not root.is_dir():
+        return [], f'Catalog directory not found: {root}'
+    try:
+        folders = [entry.name for entry in root.iterdir() if entry.is_dir() and not entry.name.startswith('.')]
+    except OSError as exc:
+        return [], f'Could not read catalog directory: {exc}'
+    return sorted(folders, key=str.lower), None
 
 
 @dataclass
@@ -82,6 +91,7 @@ class SyncTask:
     skipped: int = 0
     errors: int = 0
     current_file: str = ""
+    current_catalog: str = ""
     done: bool = False
     result_message: str = ""
     _lock: Lock = field(default_factory=Lock)
@@ -107,25 +117,10 @@ class SyncTask:
                 "skipped": self.skipped,
                 "errors": self.errors,
                 "current_file": self.current_file,
+                "current_catalog": self.current_catalog,
                 "done": self.done,
                 "result_message": self.result_message,
             }
-
-
-def resolve_books_dir(result: SyncResult, on_progress: Callable[[dict], None] | None) -> Path | None:
-    books_dir = Path(settings.books_directory) if settings.books_directory else None
-    error = None
-    if books_dir is None:
-        error = "BOOKS_DIRECTORY is not set"
-    elif not books_dir.is_dir():
-        error = f"BOOKS_DIRECTORY does not exist: {books_dir}"
-    if error is not None:
-        logger.error(error)
-        result.errors.append(error)
-        if on_progress:
-            on_progress({"done": True, "errors": 1})
-        return None
-    return books_dir
 
 
 def format_scope(folders: list[str]) -> str:
@@ -142,7 +137,7 @@ class SyncService:
         self._lock = Lock()
         self._active: SyncTask | None = None
 
-    def create_task(self, scope: str = 'all folders') -> SyncTask | None:
+    def create_task(self, scope: str = 'all catalogs') -> SyncTask | None:
         """Create a new task, or return None while another sync is still running."""
         with self._lock:
             if self._active is not None and not self._active.done:
@@ -157,7 +152,7 @@ class SyncService:
         with self._lock:
             if self._active is not None and not self._active.done:
                 return self._active
-            return None
+        return None
 
     def get_task(self, task_id: str) -> SyncTask | None:
         return self._tasks.get(task_id)
@@ -176,76 +171,86 @@ class SyncService:
         return ", ".join(parts)
 
     @staticmethod
-    def _resolve_scan_roots(books_dir: Path, folders: list[str] | None, result: SyncResult) -> list[Path] | None:
+    def _resolve_scan_roots(catalog: Catalog, folders: list[str] | None, result: SyncResult) -> list[Path] | None:
+        root = Path(catalog.root_path)
         if folders is None:
-            return [books_dir]
+            return [root]
         if not folders:
-            result.errors.append('No folders selected')
+            result.errors.append(f'{catalog.name}: no folders selected')
             return None
 
-        roots, folder_errors = resolve_selected_folders(books_dir, folders)
+        roots, folder_errors = resolve_selected_folders(root, folders)
         if folder_errors:
             for error in folder_errors:
                 logger.error("Cannot sync folder: %s", error)
-                result.errors.append(error)
+                result.errors.append(f"{catalog.name}: {error}")
             return None
         return roots
 
+    @staticmethod
+    def _load_catalogs(catalog_id: int | None) -> list[Catalog]:
+        with Session() as session:
+            query = session.query(Catalog)
+            if catalog_id is None:
+                query = query.filter(Catalog.enabled.is_(True))
+            else:
+                query = query.filter(Catalog.id == catalog_id)
+            return list(query.order_by(Catalog.name).all())
+
     def run(  # noqa: PLR0915
         self,
+        catalog_id: int | None = None,
         folders: list[str] | None = None,
         on_progress: Callable[[dict], None] | None = None,
     ) -> SyncResult:
         result = SyncResult()
         result_lock = Lock()
-
-        books_dir = resolve_books_dir(result, on_progress)
-        if books_dir is None:
-            return result
-
-        roots = self._resolve_scan_roots(books_dir, folders, result)
-        if roots is None:
+        catalogs = self._load_catalogs(catalog_id)
+        if not catalogs:
+            result.errors.append('No catalogs selected or enabled for sync')
             if on_progress:
-                on_progress({"done": True, "errors": max(len(result.errors), 1)})
+                on_progress({'done': True, 'errors': 1})
             return result
 
-        scope = 'all folders' if folders is None else format_scope(folders)
-
-        logger.info("Sync started, scanning %s", scope)
-        scan_result = DirectoryScanner().scan_folders(roots)
-        logger.info("Scan complete: %d files found, %d scan errors", len(scan_result.file_paths), len(scan_result.errors))
-
-        for error_path, error_msg in scan_result.errors:
-            logger.warning("Scan error: %s — %s", error_path, error_msg)
-            result.errors.append(f"{error_path}: {error_msg}")
-
-        total = len(scan_result.file_paths)
-        if total == 0:
-            logger.info("Sync finished: no files to import")
+        jobs: list[tuple[Catalog, Path]] = []
+        for catalog in catalogs:
             if on_progress:
-                on_progress({"done": True})
-            return result
+                on_progress({'current_catalog': catalog.name, 'current_file': ''})
+            if not Path(catalog.root_path).is_dir():
+                error = f'{catalog.name}: catalog directory is unavailable: {catalog.root_path}'
+                logger.error(error)
+                result.errors.append(error)
+                continue
 
-        logger.info("Importing %d files sequentially", total)
+            roots = self._resolve_scan_roots(catalog, folders if catalog_id is not None else None, result)
+            if roots is None:
+                continue
+            scan_result = DirectoryScanner().scan_folders(roots)
+            for error_path, error_msg in scan_result.errors:
+                logger.warning("Scan error: %s — %s", error_path, error_msg)
+                result.errors.append(f"{catalog.name}: {error_path}: {error_msg}")
+            jobs.extend((catalog, file_path) for file_path in scan_result.file_paths)
 
+        total = len(jobs)
         if on_progress:
-            on_progress({"total": total, "processed": 0, "current_file": ""})
+            on_progress({'total': total, 'processed': 0, 'current_file': ''})
 
-        def import_one(idx: int, file_path: Path) -> None:
-            logger.info("Importing [%d/%d] %s", idx, total, file_path.name)
+        def import_one(idx: int, catalog: Catalog, file_path: Path) -> None:
+            logger.info("Importing [%d/%d] %s from %s", idx, total, file_path.name, catalog.name)
             success = False
             try:
                 with Session() as session:
                     store = DataStore(session)
-                    importer = PathImporter(file_path, set())
-                    if not try_claim(importer.checksum):
+                    importer = PathImporter(file_path, set(), catalog)
+                    claim = f"{catalog.id}:{importer.checksum}"
+                    if not try_claim(claim):
                         logger.info("Skipping %s: identical file is being imported concurrently", file_path)
                     else:
                         try:
                             with store.transaction():
                                 success = importer.process(store)
                         finally:
-                            release(importer.checksum)
+                            release(claim)
 
                 with result_lock:
                     if success:
@@ -255,37 +260,36 @@ class SyncService:
                     if on_progress:
                         on_progress(
                             {
-                                "processed": idx,
-                                "added": result.added,
-                                "skipped": result.skipped,
-                                "errors": len(result.errors),
-                                "current_file": file_path.name,
+                                'processed': idx,
+                                'added': result.added,
+                                'skipped': result.skipped,
+                                'errors': len(result.errors),
+                                'current_file': file_path.name,
+                                'current_catalog': catalog.name,
                             }
                         )
             except Exception:
                 logger.exception("Error importing %s", file_path)
                 with result_lock:
-                    result.errors.append(f"{file_path}: import failed")
+                    result.errors.append(f"{catalog.name}: {file_path}: import failed")
                     if on_progress:
                         on_progress(
                             {
-                                "processed": idx,
-                                "added": result.added,
-                                "skipped": result.skipped,
-                                "errors": len(result.errors),
-                                "current_file": file_path.name,
+                                'processed': idx,
+                                'added': result.added,
+                                'skipped': result.skipped,
+                                'errors': len(result.errors),
+                                'current_file': file_path.name,
+                                'current_catalog': catalog.name,
                             }
                         )
 
-        # Imports are sequential on purpose: the pipeline does check-then-insert
-        # for shared reference rows (languages, authors, tags), which races under
-        # concurrency and loses books with UNIQUE constraint errors. PDFium is not
-        # thread-safe either.
-        for idx, file_path in enumerate(scan_result.file_paths, start=1):
-            import_one(idx, file_path)
+        # Imports are sequential on purpose: shared reference rows and PDFium
+        # are not safe to process concurrently.
+        for idx, (catalog, file_path) in enumerate(jobs, start=1):
+            import_one(idx, catalog, file_path)
 
         if on_progress:
-            on_progress({"done": True})
-
+            on_progress({'done': True})
         logger.info("Sync finished: %d added, %d skipped, %d errors", result.added, result.skipped, len(result.errors))
         return result

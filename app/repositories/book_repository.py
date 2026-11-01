@@ -9,7 +9,7 @@ from app.models.language import Language
 from app.models.publishers import Publisher
 from app.repositories.base import AbstractRepository
 
-SORTABLE_COLUMNS = frozenset({"title", "added_at", "edition", "publisher_id", "language_code"})
+SORTABLE_COLUMNS = frozenset({"title", "added_at", "edition", "publisher_id", "language_code", "issue_year", "publication_name"})
 DEFAULT_SORT_BY = "title"
 DEFAULT_SORT_ORDER = "asc"
 
@@ -30,6 +30,12 @@ def _order_clause(sort_by: str, order: str):
     # cannot reach the SQL. Invalid sort_by falls back to the default.
     column_name = sort_by if sort_by in SORTABLE_COLUMNS else DEFAULT_SORT_BY
     direction = "desc" if order.lower() == "desc" else "asc"
+    if column_name == "issue_year":
+        if direction == "desc":
+            ordered = (Book.issue_year.desc().nullslast(), Book.issue_month.desc().nullslast(), Book.issue_number.desc(), Book.added_at.desc())
+        else:
+            ordered = (Book.issue_year.asc().nullsfirst(), Book.issue_month.asc().nullsfirst(), Book.issue_number.asc(), Book.added_at.asc())
+        return ordered, Book.id.asc()
     column = getattr(Book, column_name)
     ordered = column.desc() if direction == "desc" else column.asc()
     # always tiebreak by id so paginated rows are stable across pages when the
@@ -39,6 +45,8 @@ def _order_clause(sort_by: str, order: str):
 
 def _filter_conditions(filters: dict) -> list:
     conditions = []
+    if filters.get("catalog_id"):
+        conditions.append(Book.catalog_id == filters["catalog_id"])
     if filters.get("author"):
         conditions.append(Book.authors.any(Author.name == filters["author"]))
     if filters.get("language"):
@@ -49,33 +57,60 @@ def _filter_conditions(filters: dict) -> list:
         conditions.append(Book.series.has(BookSeries.name == filters["series"]))
     if filters.get("format"):
         conditions.append(Book.format == filters["format"])
+    if filters.get("publication_name"):
+        conditions.append(Book.publication_name == filters["publication_name"])
     return conditions
 
 
 class BookRepository(AbstractRepository):
-    def get_tags_linked_to_books(self):
-        tags_query = select(Tag).join(Tag.books).group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)
+    def get_tags_linked_to_books(self, catalog_id: int | None = None):
+        tags_query = select(Tag).join(Tag.books)
+        if catalog_id is not None:
+            tags_query = tags_query.where(Book.catalog_id == catalog_id)
+        tags_query = tags_query.group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)
         return self.session.scalars(tags_query).unique().all()
 
-    def get_authors_linked_to_books(self):
-        query = select(Author).join(Author.books).group_by(Author.id).having(func.count(Book.id) > 0).order_by(Author.name)
+    def get_authors_linked_to_books(self, catalog_id: int | None = None):
+        query = select(Author).join(Author.books)
+        if catalog_id is not None:
+            query = query.where(Book.catalog_id == catalog_id)
+        query = query.group_by(Author.id).having(func.count(Book.id) > 0).order_by(Author.name)
         return self.session.scalars(query).unique().all()
 
-    def get_languages_linked_to_books(self):
-        query = select(Language).join(Language.books).group_by(Language.code).having(func.count(Book.id) > 0).order_by(Language.name)
+    def get_languages_linked_to_books(self, catalog_id: int | None = None):
+        query = select(Language).join(Language.books)
+        if catalog_id is not None:
+            query = query.where(Book.catalog_id == catalog_id)
+        query = query.group_by(Language.code).having(func.count(Book.id) > 0).order_by(Language.name)
         return self.session.scalars(query).unique().all()
 
-    def get_publishers_linked_to_books(self):
-        query = select(Publisher).join(Publisher.books).group_by(Publisher.id).having(func.count(Book.id) > 0).order_by(Publisher.name)
+    def get_publishers_linked_to_books(self, catalog_id: int | None = None):
+        query = select(Publisher).join(Publisher.books)
+        if catalog_id is not None:
+            query = query.where(Book.catalog_id == catalog_id)
+        query = query.group_by(Publisher.id).having(func.count(Book.id) > 0).order_by(Publisher.name)
         return self.session.scalars(query).unique().all()
 
-    def get_series_linked_to_books(self):
-        query = select(BookSeries).join(BookSeries.books).group_by(BookSeries.id).having(func.count(Book.id) > 0).order_by(BookSeries.name)
+    def get_series_linked_to_books(self, catalog_id: int | None = None):
+        query = select(BookSeries).join(BookSeries.books)
+        if catalog_id is not None:
+            query = query.where(Book.catalog_id == catalog_id)
+        query = query.group_by(BookSeries.id).having(func.count(Book.id) > 0).order_by(BookSeries.name)
         return self.session.scalars(query).unique().all()
 
-    def get_formats_linked_to_books(self):
-        query = select(Book.format).where(Book.format.isnot(None)).group_by(Book.format).order_by(Book.format)
+    def get_formats_linked_to_books(self, catalog_id: int | None = None):
+        query = select(Book.format).where(Book.format.isnot(None))
+        if catalog_id is not None:
+            query = query.where(Book.catalog_id == catalog_id)
+        query = query.group_by(Book.format).order_by(Book.format)
         return [fmt for (fmt,) in self.session.execute(query).all()]
+
+    def get_publications_linked_to_books(self, catalog_id: int | None = None):
+        query = select(Book.publication_name).where(Book.publication_name.isnot(None))
+        if catalog_id is not None:
+            query = query.where(Book.catalog_id == catalog_id)
+        query = query.group_by(Book.publication_name).order_by(Book.publication_name)
+        return [name for (name,) in self.session.execute(query).all()]
 
     def get_all_languages(self):
         return self.session.scalars(select(Language).order_by(Language.name)).all()
@@ -132,11 +167,13 @@ class BookRepository(AbstractRepository):
         book = self.session.scalar(select(Book).options(joinedload(Book.tags)).where(Book.id == book_id))
         return book
 
-    def get_related_tags(self, tag_names: list[str]) -> list[Tag]:
+    def get_related_tags(self, tag_names: list[str], catalog_id: int | None = None) -> list[Tag]:
         stmt = select(Tag).join(Tag.books)
         if tag_names:
             stmt = stmt.where(and_(*(Book.tags.any(name=name) for name in tag_names)))
             stmt = stmt.where(Tag.name.notin_(tag_names))
+        if catalog_id is not None:
+            stmt = stmt.where(Book.catalog_id == catalog_id)
         return self.session.scalars(stmt.group_by(Tag.id).having(func.count(Book.id) > 0).order_by(Tag.name)).unique().all()
 
     def add_tag(self, book: Book, tag: Tag) -> None:

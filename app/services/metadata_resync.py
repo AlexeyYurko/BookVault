@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from app.services.catalog_paths import PathOutsideCatalogError, resolve_book_file
 from app.services.importers.filesystem import PathImporter
 
 if TYPE_CHECKING:
@@ -46,12 +46,16 @@ def resync_book_metadata(store: DataStore, book: Book) -> str | None:
     if not book.file_path:
         return "no_file"
 
-    file_path = Path(book.file_path)
+    try:
+        file_path = resolve_book_file(book)
+    except PathOutsideCatalogError:
+        logger.warning("Refusing to resync book %s outside its catalog", book.id)
+        return "unsafe_path"
     if not file_path.is_file():
         return "missing_file"
 
     try:
-        importer = PathImporter(file_path, set())
+        importer = PathImporter(file_path, set(), book.catalog)
     except ValueError:
         logger.warning("Unsupported file extension for resync: %s", book.file_path)
         return "unsupported"

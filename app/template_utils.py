@@ -122,11 +122,22 @@ def normalize_sort(
     return by, direction
 
 
-FILTER_PARAMS = ("author", "language", "publisher", "series", "format")
+FILTER_PARAMS = ("catalog_id", "author", "language", "publisher", "series", "format", "publication_name")
 
 
 def extract_filters(params: dict) -> dict:
-    return {key: params.get(key) for key in FILTER_PARAMS if params.get(key)}
+    filters = {}
+    for key in FILTER_PARAMS:
+        value = params.get(key)
+        if not value:
+            continue
+        if key == "catalog_id":
+            catalog_id = _parse_int(value)
+            if catalog_id is not None:
+                filters[key] = catalog_id
+        else:
+            filters[key] = value
+    return filters
 
 
 def collect_book_tags(books) -> list:
@@ -198,6 +209,10 @@ def render_catalog(  # noqa: PLR0913
         request.query_params.get("order"),
     )
     filters = extract_filters(request.query_params)
+    catalogs = book_service.catalogs()
+    if filters.get("catalog_id") is not None and filters["catalog_id"] not in {catalog.id for catalog in catalogs}:
+        filters.pop("catalog_id")
+    catalog_id = filters.get("catalog_id")
 
     result = book_service.find_books(
         query=query,
@@ -211,9 +226,9 @@ def render_catalog(  # noqa: PLR0913
     books = result.books
 
     if tag_source is TagSource.ALL:
-        sidebar_tags = book_service.get_tags_linked_to_books()
+        sidebar_tags = book_service.get_tags_linked_to_books(catalog_id)
     elif tag_source is TagSource.RELATED:
-        sidebar_tags = book_service.get_related_tags(tags or [])
+        sidebar_tags = book_service.get_related_tags(tags or [], catalog_id)
     else:
         sidebar_tags = collect_book_tags(books)
 
@@ -224,7 +239,7 @@ def render_catalog(  # noqa: PLR0913
             "tags": sidebar_tags,
             "edition_siblings": book_service.edition_siblings_map(books),
             "active_filters": filters,
-            **book_service.filter_context(),
+            **book_service.filter_context(catalog_id, catalogs=catalogs),
         },
         route_name=route_name,
         page=result.page,

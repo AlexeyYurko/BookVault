@@ -79,6 +79,31 @@
                 <input id="title" name="title" type="text" required value="{{ values.title }}" class="input w-full">
             </div>
 
+            {% if book.catalog.kind == 'magazine' %}
+            <div class="grid gap-5 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label for="publication_name" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Publication</label>
+                    <input id="publication_name" name="publication_name" type="text" value="{{ values.publication_name }}" class="input w-full" placeholder="Magazine name">
+                </div>
+                <div>
+                    <label for="issue_label" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Issue label</label>
+                    <input id="issue_label" name="issue_label" type="text" value="{{ values.issue_label }}" class="input w-full" placeholder="Christmas Edition">
+                </div>
+                <div>
+                    <label for="issue_number" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Issue number</label>
+                    <input id="issue_number" name="issue_number" type="text" value="{{ values.issue_number }}" class="input w-full" placeholder="326">
+                </div>
+                <div>
+                    <label for="issue_year" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Year</label>
+                    <input id="issue_year" name="issue_year" type="text" inputmode="numeric" value="{{ values.issue_year }}" class="input w-full" placeholder="2025">
+                </div>
+                <div>
+                    <label for="issue_month" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Month</label>
+                    <input id="issue_month" name="issue_month" type="text" inputmode="numeric" value="{{ values.issue_month }}" class="input w-full" placeholder="12">
+                </div>
+            </div>
+            {% endif %}
+
             <div>
                 <label for="author_names" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">Authors</label>
                 <input id="author_names" name="author_names" type="text" value="{{ values.authors }}"

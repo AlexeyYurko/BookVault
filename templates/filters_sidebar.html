@@ -6,7 +6,7 @@
         {% endif %}
     {% endfor %}
     {% set _ = params.__setitem__(key, value) %}
-    {{ request.url.include_query_params(**params) }}
+    {{ request.url.replace_query_params(**params) }}
 {% endmacro %}
 
 {% macro clear_filter_url(key) %}
@@ -16,7 +16,7 @@
             {% set _ = params.__setitem__(k, v) %}
         {% endif %}
     {% endfor %}
-    {{ request.url.include_query_params(**params) }}
+    {{ request.url.replace_query_params(**params) }}
 {% endmacro %}
 
 {% macro toggle_filter_url(key, value, is_active) %}
@@ -25,6 +25,17 @@
     {% else %}
         {{ filter_url(key, value) }}
     {% endif %}
+{% endmacro %}
+
+{% macro catalog_filter_url(catalog_id) %}
+    {% set params = {} %}
+    {% for k, v in request.query_params.items() %}
+        {% if k in ('query', 'per_page', 'sort_by', 'order') %}
+            {% set _ = params.__setitem__(k, v) %}
+        {% endif %}
+    {% endfor %}
+    {% set _ = params.__setitem__('catalog_id', catalog_id) %}
+    {{ request.url.replace_query_params(**params) }}
 {% endmacro %}
 
 {% macro filter_toggle(label, target_id) %}
@@ -55,7 +66,13 @@
         <div class="flex flex-wrap gap-1.5">
             {% for key, value in active_filters.items() %}
             <span class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
+                {% if key == 'catalog_id' %}
+                catalog: {{ active_catalog.name if active_catalog else value }}
+                {% elif key == 'publication_name' %}
+                publication: {{ value }}
+                {% else %}
                 {{ key }}: {{ value }}
+                {% endif %}
                 <button type="button" class="font-bold leading-none text-indigo-200 transition-colors hover:text-white"
                     hx-get="{{ clear_filter_url(key) }}" hx-target="#books-list" hx-push-url="true"
                     title="Remove {{ key }} filter" aria-label="Remove {{ key }} filter">×</button>
@@ -68,6 +85,51 @@
                     data-tag="{{ tag_name }}"
                     title="Remove {{ tag_name }} tag" aria-label="Remove {{ tag_name }} tag">×</button>
             </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Catalogs -->
+    {% if catalogs %}
+    <div class="filter-section mb-4" data-section="catalogs">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Catalog</h3>
+            {{ filter_toggle('Catalog', 'catalogs-filter-options') }}
+        </div>
+        <div class="filter-content space-y-1" id="catalogs-filter-options">
+            {% set all_active = not active_filters.catalog_id %}
+            <a href="{{ clear_filter_url('catalog_id') }}" hx-get="{{ clear_filter_url('catalog_id') }}" hx-target="#books-list" hx-push-url="true"
+                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if all_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}">
+                All catalogs
+            </a>
+            {% for catalog in catalogs %}
+            {% set is_active = active_filters.catalog_id == catalog.id %}
+            <a href="{{ catalog_filter_url(catalog.id) }}" hx-get="{{ catalog_filter_url(catalog.id) }}" hx-target="#books-list" hx-push-url="true"
+                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}"
+                title="{{ catalog.name }}{% if not catalog.enabled %} (sync disabled){% endif %}">
+                {{ catalog.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Publications -->
+    {% if publications %}
+    <div class="filter-section mb-4" data-section="publications">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Publication</h3>
+            {{ filter_toggle('Publication', 'publications-filter-options') }}
+        </div>
+        <div class="filter-content space-y-1" id="publications-filter-options">
+            {% for publication in publications %}
+            {% set is_active = active_filters.publication_name == publication %}
+            <a href="{{ toggle_filter_url('publication_name', publication, is_active) }}" hx-get="{{ toggle_filter_url('publication_name', publication, is_active) }}" hx-target="#books-list" hx-push-url="true"
+                class="block truncate rounded px-2 py-1 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 {% if is_active %}bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300{% endif %}"
+                title="{{ publication }}">
+                {{ publication }}
+            </a>
             {% endfor %}
         </div>
     </div>

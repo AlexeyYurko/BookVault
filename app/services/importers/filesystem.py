@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
+from app.models import Catalog
+from app.services.catalog_paths import relative_file_path
 from app.services.importers import BookImporter, DjvuImporter, EpubImporter, PdfImporter
 
 EXT_TO_IMPORTER: dict[str, type[BookImporter]] = {
@@ -30,12 +32,17 @@ class LocalFileWrapper:
 
 
 class PathImporter:
-    def __init__(self, path: Path, tags: set[str]):
+    def __init__(self, path: Path, tags: set[str], catalog: Catalog):
         ext = path.suffix.lower()
         importer_cls = EXT_TO_IMPORTER.get(ext)
         if importer_cls is None:
             raise ValueError(f'Unsupported file extension: {ext}')
-        self._importer = importer_cls(LocalFileWrapper(path=path), tags, file_path=str(path))
+        self._importer = importer_cls(
+            LocalFileWrapper(path=path),
+            tags,
+            catalog,
+            file_path=relative_file_path(catalog, path),
+        )
 
     def process(self, store):
         return self._importer.process(store)

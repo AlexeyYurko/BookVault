@@ -6,7 +6,7 @@
             <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
                 <div class="text-sm text-slate-500 dark:text-slate-400" role="status" aria-live="polite" aria-atomic="true">
                     {% if pagination is defined %}
-                    {{ pagination.total }} book{{ 's' if pagination.total != 1 else '' }}
+                    {{ pagination.total }} item{{ 's' if pagination.total != 1 else '' }}
                     {% endif %}
                 </div>
 
@@ -144,9 +144,16 @@
                                         hx-swap="innerHTML"
                                         hx-trigger="click"
                                         onclick="if (!window.matchMedia('(min-width: 1280px)').matches) document.getElementById('book-detail-panel').scrollIntoView({behavior:'smooth', block:'start'})">
+                                        {% if book.catalog.kind == 'magazine' and (book.publication_name or book.issue_label or book.issue_number) %}
+                                        <div class="truncate font-medium text-slate-900 dark:text-white">
+                                            {{ book.publication_name or book.title }}{% if book.issue_number %} #{{ book.issue_number }}{% endif %}{% if book.issue_label %} · {{ book.issue_label }}{% endif %}{% if book.issue_year %} ({{ '%02d' % book.issue_month if book.issue_month else '' }}{% if book.issue_month and book.issue_year %}/{{ book.issue_year }}{% elif book.issue_year %}{{ book.issue_year }}{% endif %}){% endif %}
+                                        </div>
+                                        <div class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ book.title }}{% if book.authors %} · {{ book.authors|join(', ', attribute='name') }}{% endif %}</div>
+                                        {% else %}
                                         <div class="truncate font-medium text-slate-900 dark:text-white">{{ book.title }}</div>
                                         {% if book.authors %}
                                         <div class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</div>
+                                        {% endif %}
                                         {% endif %}
                                     </a>
                                 </div>

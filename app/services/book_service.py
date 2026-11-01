@@ -18,9 +18,12 @@ from app.services.metadata_resync import (
 )
 
 if TYPE_CHECKING:
-    from app.models import Author, Publisher, Tag
+    from app.models import Author, Catalog, Publisher, Tag
     from app.repositories.data_store import DataStore
 
+MIN_ISSUE_YEAR = 1600
+MAX_ISSUE_YEAR = 2100
+MAX_ISSUE_MONTH = 12
 
 @dataclass
 class EditBookDTO:
@@ -37,6 +40,11 @@ class EditBookDTO:
     goodreads_url: str
     tags_str: str
     description: str
+    publication_name: str = ""
+    issue_number: str = ""
+    issue_year: str = ""
+    issue_month: str = ""
+    issue_label: str = ""
 
 
 @dataclass
@@ -45,6 +53,8 @@ class EditValidation:
     isbn: str | None = None
     original_isbn: str | None = None
     language: Language | None = None
+    issue_year: int | None = None
+    issue_month: int | None = None
 
 
 @dataclass
@@ -100,11 +110,14 @@ class BookService:
             order=order,
         )
 
-    def get_related_tags(self, tag_names: list[str]) -> list[Tag]:
-        return self.store.book_repo.get_related_tags(tag_names)
+    def get_related_tags(self, tag_names: list[str], catalog_id: int | None = None) -> list[Tag]:
+        return self.store.book_repo.get_related_tags(tag_names, catalog_id)
 
-    def get_tags_linked_to_books(self) -> list[Tag]:
-        return self.store.book_repo.get_tags_linked_to_books()
+    def get_tags_linked_to_books(self, catalog_id: int | None = None) -> list[Tag]:
+        return self.store.book_repo.get_tags_linked_to_books(catalog_id)
+
+    def catalogs(self) -> list[Catalog]:
+        return list(self.store.catalog_repo.list_all("name"))
 
     def edition_siblings(self, book: Book) -> list[Book]:
         if book.edition_group_id is None:
@@ -131,13 +144,22 @@ class BookService:
         return result
 
     def find_link_candidates(self, book: Book, query: str, limit: int = 10) -> list[Book]:
-        result = self.store.book_repo.find_books(query=query, page=1, per_page=limit, sort_by="title", order="asc")
+        result = self.store.book_repo.find_books(
+            query=query,
+            filters={"catalog_id": book.catalog_id},
+            page=1,
+            per_page=limit,
+            sort_by="title",
+            order="asc",
+        )
         excluded = {book.id, *(sibling.id for sibling in self.edition_siblings(book))}
         return [candidate for candidate in result.books if candidate.id not in excluded]
 
     def link_edition(self, book: Book, target: Book) -> None:
         if book.id == target.id:
             raise ValueError("Cannot link a book to itself")
+        if book.catalog_id != target.catalog_id:
+            raise ValueError("Books from different catalogs cannot be linked")
         with self.store.transaction():
             group_id = target.edition_group_id or book.edition_group_id
             stale_groups = {book.edition_group_id, target.edition_group_id}
@@ -158,13 +180,22 @@ class BookService:
             self.store.session.flush()
             self.store.edition_group_repo.prune(group_id)
 
-    def filter_context(self) -> dict:
+    def filter_context(self, catalog_id: int | None = None, catalogs: list[Catalog] | None = None) -> dict:
+        if catalogs is None:
+            catalogs = self.catalogs()
+        active_catalog = next((catalog for catalog in catalogs if catalog.id == catalog_id), None)
+        publications = []
+        if catalog_id is not None or any(catalog.kind == "magazine" for catalog in catalogs):
+            publications = self.store.book_repo.get_publications_linked_to_books(catalog_id)
         return {
-            "authors": self.store.book_repo.get_authors_linked_to_books(),
-            "languages": self.store.book_repo.get_languages_linked_to_books(),
-            "publishers": self.store.book_repo.get_publishers_linked_to_books(),
-            "series_list": self.store.book_repo.get_series_linked_to_books(),
-            "formats": self.store.book_repo.get_formats_linked_to_books(),
+            "authors": self.store.book_repo.get_authors_linked_to_books(catalog_id),
+            "languages": self.store.book_repo.get_languages_linked_to_books(catalog_id),
+            "publishers": self.store.book_repo.get_publishers_linked_to_books(catalog_id),
+            "series_list": self.store.book_repo.get_series_linked_to_books(catalog_id),
+            "formats": self.store.book_repo.get_formats_linked_to_books(catalog_id),
+            "publications": publications,
+            "catalogs": catalogs,
+            "active_catalog": active_catalog,
         }
 
     def edit_form_context(self) -> dict:
@@ -203,6 +234,11 @@ class BookService:
                 "goodreads_url": dto.goodreads_url,
                 "tags": dto.tags_str,
                 "description": dto.description,
+                "publication_name": getattr(dto, "publication_name", ""),
+                "issue_number": getattr(dto, "issue_number", ""),
+                "issue_year": getattr(dto, "issue_year", ""),
+                "issue_month": getattr(dto, "issue_month", ""),
+                "issue_label": getattr(dto, "issue_label", ""),
             }
         return {
             "title": book.title,
@@ -218,6 +254,11 @@ class BookService:
             "goodreads_url": book.goodreads_url or "",
             "tags": ", ".join(tag.name for tag in book.tags),
             "description": book.description or "",
+            "publication_name": book.publication_name or "",
+            "issue_number": book.issue_number or "",
+            "issue_year": book.issue_year or "",
+            "issue_month": book.issue_month or "",
+            "issue_label": book.issue_label or "",
         }
 
     def lookup_values(self, book: Book, query: str) -> LookupResult:
@@ -263,8 +304,33 @@ class BookService:
             errors.append("Invalid ISBN.")
         if dto.original_isbn.strip() and normalized_original_isbn is None:
             errors.append("Invalid original ISBN.")
+
+        issue_year = None
+        issue_month = None
+        if getattr(dto, "issue_year", "").strip():
+            try:
+                year = int(dto.issue_year.strip())
+                if year < MIN_ISSUE_YEAR or year > MAX_ISSUE_YEAR:
+                    raise ValueError
+                issue_year = year
+            except ValueError:
+                errors.append("Invalid issue year.")
+        if getattr(dto, "issue_month", "").strip():
+            try:
+                month = int(dto.issue_month.strip())
+                if month < 1 or month > MAX_ISSUE_MONTH:
+                    raise ValueError
+                issue_month = month
+            except ValueError:
+                errors.append("Invalid issue month.")
+
         return EditValidation(
-            errors=errors, isbn=normalized_book_isbn, original_isbn=normalized_original_isbn, language=language
+            errors=errors,
+            isbn=normalized_book_isbn,
+            original_isbn=normalized_original_isbn,
+            language=language,
+            issue_year=issue_year,
+            issue_month=issue_month,
         )
 
     def edited_fields(self, book: Book, dto: EditBookDTO, validation: EditValidation) -> list[str]:
@@ -288,6 +354,11 @@ class BookService:
                 {tag.name for tag in book.tags},
             ),
             ("format", dto.format.strip() or None, book.format),
+            ("publication_name", getattr(dto, "publication_name", "").strip() or None, book.publication_name),
+            ("issue_number", getattr(dto, "issue_number", "").strip() or None, book.issue_number),
+            ("issue_year", validation.issue_year, book.issue_year),
+            ("issue_month", validation.issue_month, book.issue_month),
+            ("issue_label", getattr(dto, "issue_label", "").strip() or None, book.issue_label),
         ]
         for column, new_value, old_value in comparisons:
             if new_value != old_value:
@@ -311,6 +382,11 @@ class BookService:
             book.publisher = self.resolve_publisher(dto.publisher_name)
             book.series = self.resolve_series(dto.series_name)
             book.tags = self.resolve_tags(dto.tags_str)
+            book.publication_name = getattr(dto, "publication_name", "").strip() or None
+            book.issue_number = getattr(dto, "issue_number", "").strip() or None
+            book.issue_year = validation.issue_year
+            book.issue_month = validation.issue_month
+            book.issue_label = getattr(dto, "issue_label", "").strip() or None
 
             mark_fields_updated(book, edited)
 

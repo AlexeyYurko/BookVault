@@ -1,11 +1,12 @@
 from contextlib import contextmanager
 
 from app.db import Session
-from app.models import Book, EditionGroup, KeywordTag, Tag
+from app.models import Book, Catalog, EditionGroup, KeywordTag, Tag
 from app.models.author import Author
 from app.models.publishers import Publisher
 from app.repositories.author_repo import AuthorRepository
 from app.repositories.book_repository import BookRepository
+from app.repositories.catalog_repository import CatalogRepository
 from app.repositories.edition_group_repo import EditionGroupRepository
 from app.repositories.keyword_tag_repo import KeywordTagRepository
 from app.repositories.publisher_repo import PublisherRepository
@@ -16,6 +17,7 @@ class DataStore:
     def __init__(self, session):
         self._session = session
         self.book_repo = BookRepository(session, Book)
+        self.catalog_repo = CatalogRepository(session, Catalog)
         self.tag_repo = TagRepository(session, Tag)
         self.author_repo = AuthorRepository(session, Author)
         self.publisher_repo = PublisherRepository(session, Publisher)

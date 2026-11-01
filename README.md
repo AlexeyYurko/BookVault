@@ -20,16 +20,18 @@ folder to import into, no database of copies.
 
 ## Features
 
-- **In-place library sync** - scan the whole folder or just selected top-level
-  folders, with live progress in the UI.
+- **In-place library sync** - connect several independent book or magazine
+  directories, scan the whole folder or just selected top-level folders, with
+  live progress in the UI.
 - **PDF and EPUB support** with metadata extraction, cover images, ISBN
   normalization and language detection. DJVU files are recognized and indexed
   but metadata extraction for them is not implemented yet.
 - **Tags from your folder structure** - `Books/Programming/Python/foo.epub`
   becomes tagged `programming`, `python`.
 - **Duplicate & edition detection** - identical files are skipped by checksum
-  (so moving or renaming a book doesn't create a new entry), and fuzzy
-  title/author matching groups translations and editions of the same work.
+  within each catalog (so moving or renaming a book doesn't create a new entry),
+  and fuzzy title/author matching groups translations and editions of the same
+  work.
 - **Metadata lookup** - fill in missing details from Google Books and
   Open Library (by ISBN where available), or re-read them from the file.
 - **Search, filters and batch actions** - search across titles, authors, ISBN,
@@ -66,6 +68,14 @@ Images are built and published to GitHub Container Registry by
      - /mnt/books:/books:ro
    ```
 
+   To use several catalogs, mount each directory inside the container as well:
+
+   ```yaml
+   volumes:
+     - /mnt/books:/books:ro
+     - /mnt/magazines:/magazines:ro
+   ```
+
 2. Pull and start:
 
    ```sh
@@ -73,13 +83,22 @@ Images are built and published to GitHub Container Registry by
    docker compose up -d
    ```
 
-3. Open <http://localhost:8000>, press **Sync**, and choose the folders to scan
-   (or leave **All folders** checked).
+3. Open <http://localhost:8000>. On the first run, `/books` becomes the initial
+   **Books** catalog. Add more directories in **Settings → Catalogs** using their
+   paths inside the container (for example `/magazines`), then press **Sync** and
+   choose a catalog and the folders to scan.
 
 To update, run the same two commands again.
 
 State lives on the host in `./data` (`bookvault.db` and `covers/`), so it
 survives rebuilds. The books folder is mounted **read-only** at `/books`.
+
+Catalogs are stored in the database and managed in the UI. Docker Compose only
+provides the mounts: every host directory you want to index must be mounted into
+the container and then added as a catalog with its container path. A catalog can
+be marked as a book or magazine catalog; magazine-specific fields and views are
+still being added. Unavailable catalogs stay in the database and are skipped
+during sync instead of losing their records.
 
 The container runs as the unprivileged user `appuser` (uid 1000). Because the
 books mount is read-only, its permissions cannot be fixed at startup - make
@@ -106,6 +125,10 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
+`BOOKS_DIRECTORY` is used by the migration to create the first catalog and to
+convert an existing single-folder library to relative paths. After that, manage
+catalogs in **Settings → Catalogs**.
+
 The app is now at <http://localhost:8000>, with API docs at `/docs`.
 
 Common commands:
@@ -113,6 +136,7 @@ Common commands:
 ```sh
 uv run ruff check .                    # lint
 uv run ruff format .                   # format
+uv run pytest -q                       # tests
 uv run alembic revision --autogenerate -m "change"   # new migration
 uv run alembic upgrade head            # apply migrations
 ```
@@ -127,7 +151,7 @@ Settings are read from environment variables or `.env` (see `.env.sample`).
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `BOOKS_DIRECTORY` | *(empty)* | Root folder to scan for books. |
+| `BOOKS_DIRECTORY` | *(empty)* | Legacy initial library path: used by the migration to create the first catalog and convert absolute paths. Catalogs are managed in the UI afterwards. |
 | `DATABASE_URL` | `sqlite:///<project>/bookvault.db` | SQLAlchemy database URL. |
 | `TEMP_DIR` | `tmp` | Scratch space for imports. |
 | `COVER_IMAGES_PATH` | `cover_images` | Cover folder, relative to `STATIC_PATH`. |
@@ -136,14 +160,18 @@ Settings are read from environment variables or `.env` (see `.env.sample`).
 
 In Docker these are already set in `docker-compose.yml`
 (`BOOKS_DIRECTORY=/books`, `DATABASE_URL=sqlite:////data/bookvault.db`).
+`BOOKS_DIRECTORY` is only the initial catalog; without it the migration refuses
+to convert a non-empty library, so keep it set if you are upgrading.
 
 ## How it works
 
-Each sync walks the library, picks files with a supported extension, and runs
-them through an import pipeline: read metadata and cover → normalize ISBN and
-language → derive path tags → check for similar books → persist. Books that
-fuzzy-match an existing title with a shared author are automatically grouped
-under the same edition group, which is how multilingual variants are linked.
+Each sync walks the selected catalogs, picks files with a supported extension,
+and runs them through an import pipeline: read metadata and cover → normalize
+ISBN and language → derive path tags → check for similar books → persist. Book
+records store a path relative to their catalog, so moving a catalog root only
+requires editing the catalog. Books that fuzzy-match an existing title with a
+shared author inside the same catalog are automatically grouped under the same
+edition group, which is how multilingual variants are linked.
 
 ```
 app/

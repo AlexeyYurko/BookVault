@@ -4,6 +4,57 @@ env:
   VENV: .venv/bin
 
 tasks:
+  install:
+    desc: install dependencies
+    cmds:
+      - uv sync
+
+  test:
+    desc: run tests
+    cmds:
+      - "{{.VENV}}/pytest {{.CLI_ARGS}}"
+
+  test:verbose:
+    desc: run tests with verbose output
+    cmds:
+      - "{{.VENV}}/pytest -v {{.CLI_ARGS}}"
+
+  test:cov:
+    desc: run tests with coverage
+    cmds:
+      - "{{.VENV}}/pytest --cov=app --cov-report=term-missing {{.CLI_ARGS}}"
+
+  lint:
+    desc: run ruff linter
+    cmds:
+      - "{{.VENV}}/ruff check ."
+
+  lint:fix:
+    desc: run ruff linter with auto-fix
+    cmds:
+      - "{{.VENV}}/ruff check . --fix"
+
+  format:
+    desc: format code with ruff
+    cmds:
+      - "{{.VENV}}/ruff format ."
+
+  format:check:
+    desc: check formatting with ruff
+    cmds:
+      - "{{.VENV}}/ruff format --check ."
+
+  check:
+    desc: run lint and tests
+    cmds:
+      - task: lint
+      - task: test
+
+  dev:
+    desc: run development server
+    cmds:
+      - "{{.VENV}}/uvicorn app.main:app --reload"
+
   migration:
     desc: Database migrations
     summary: |

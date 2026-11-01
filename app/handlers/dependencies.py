@@ -14,6 +14,7 @@ from app.db import (
 from app.models import Book
 from app.repositories.data_store import DataStore
 from app.services.book_service import BookService
+from app.services.catalog_service import CatalogService
 from app.services.sync_service import SyncService
 
 
@@ -29,6 +30,13 @@ def get_book_service(store: DataStoreDependency) -> BookService:
 
 
 BookServiceDependency = Annotated[BookService, Depends(get_book_service)]
+
+
+def get_catalog_service(store: DataStoreDependency) -> CatalogService:
+    return CatalogService(store)
+
+
+CatalogServiceDependency = Annotated[CatalogService, Depends(get_catalog_service)]
 
 
 def get_book_or_404(book_id: int, book_service: BookServiceDependency) -> Book:
