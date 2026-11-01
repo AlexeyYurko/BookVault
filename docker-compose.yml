@@ -9,13 +9,16 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Books are mounted read-only at /books inside the container.
+      # Used once by migrations to create the initial catalog and to convert an
+      # existing single-folder library. Catalogs are managed in the UI after that.
       BOOKS_DIRECTORY: /books
       DATABASE_URL: sqlite:////data/bookvault.db
       TEMP_DIR: /tmp/bookvault
     volumes:
       # Edit the host path on the left to point at the folder with your books.
+      # Mount every other directory you want to add as a catalog too.
       - /mnt/books:/books:ro
+      # - /mnt/magazines:/magazines:ro
       # Persistent database and cover images.
       - ./data:/data
       - ./data/covers:/app/static/cover_images

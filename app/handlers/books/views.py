@@ -6,20 +6,20 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
-    Response,
 )
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from starlette import status
 
-from app.config import settings
 from app.handlers.dependencies import (
     BookDependency,
     BookServiceDependency,
     ReadableBookDependency,
     TargetBookDependency,
 )
+from app.models import Book
 from app.services.book_service import EditBookDTO
+from app.services.catalog_paths import PathOutsideCatalogError, resolve_book_file
 from app.services.metadata_resync import FIELD_LABELS
 from app.template_utils import TagSource, render_catalog, templates
 
@@ -44,6 +44,7 @@ RESYNC_NOTICES = {
     "ok": ("Metadata re-synced from file.", True),
     "no_file": ("No file path stored for this book.", False),
     "missing_file": ("File not found on disk.", False),
+    "unsafe_path": ("Stored file path is outside the book's catalog.", False),
     "unsupported": ("Unsupported file format for resync.", False),
     "failed": ("Failed to re-read metadata from the file.", False),
     "unprotected": ("Field protection cleared.", True),
@@ -291,6 +292,11 @@ def update_book(  # noqa: PLR0913
     goodreads_url: str = Form(default=""),
     tags_str: str = Form(default=""),
     description: str = Form(default=""),
+    publication_name: str = Form(default=""),
+    issue_number: str = Form(default=""),
+    issue_year: str = Form(default=""),
+    issue_month: str = Form(default=""),
+    issue_label: str = Form(default=""),
     next: str = Form(default=""),
     back_url: str = Form(default=""),
 ):
@@ -308,6 +314,11 @@ def update_book(  # noqa: PLR0913
         goodreads_url=goodreads_url,
         tags_str=tags_str,
         description=description,
+        publication_name=publication_name,
+        issue_number=issue_number,
+        issue_year=issue_year,
+        issue_month=issue_month,
+        issue_label=issue_label,
     )
     validation = book_service.validate_edit(dto)
     library_url, return_url = edit_navigation_urls(request, next, back_url)
@@ -377,53 +388,15 @@ def unlink_edition(
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.get("/{book_id}/download")
-def download_book(
-    request: Request,
-    book: ReadableBookDependency,
-):
-    file_path = Path(book.file_path)
-    if not file_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
-
-    # Try to open locally (macOS), otherwise serve as file download
+def _file_response(book: Book, download: bool) -> FileResponse:
     try:
-        import sys
-        if sys.platform == "darwin":
-            import subprocess as _subprocess
-            _subprocess.Popen(["/usr/bin/open", str(file_path)])  # noqa: S603
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception:  # noqa: S110
-        pass
-
-    return FileResponse(
-        str(file_path),
-        media_type="application/octet-stream",
-        filename=file_path.name,
-        content_disposition_type="attachment",
-    )
-
-
-@router.get("/{book_id}/file")
-def serve_book_file(
-    request: Request,
-    book: ReadableBookDependency,
-    download: bool = False,
-):
-    file_path = Path(book.file_path)
-    if not file_path.is_absolute():
-        file_path = Path(settings.books_directory) / file_path if settings.books_directory else file_path
-
+        file_path = resolve_book_file(book)
+    except PathOutsideCatalogError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied") from None
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found") from None
     if not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
-
-    if settings.books_directory:
-        books_dir = Path(settings.books_directory).resolve()
-        file_path_resolved = file_path.resolve()
-        try:
-            file_path_resolved.relative_to(books_dir)
-        except ValueError:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied") from None
 
     media_type = BOOK_MEDIA_TYPES.get(file_path.suffix.lower(), "application/octet-stream")
     return FileResponse(
@@ -432,6 +405,16 @@ def serve_book_file(
         filename=file_path.name,
         content_disposition_type="attachment" if download else "inline",
     )
+
+
+@router.get("/{book_id}/download")
+def download_book(book: ReadableBookDependency):
+    return _file_response(book, download=True)
+
+
+@router.get("/{book_id}/file")
+def serve_book_file(book: ReadableBookDependency, download: bool = False):
+    return _file_response(book, download=download)
 
 
 @router.get("/by_tag/{tag_name}")

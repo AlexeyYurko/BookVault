@@ -17,11 +17,21 @@
     <div class="min-w-0 flex-1">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between xl:flex-col">
             <div class="min-w-0">
+                {% if book.catalog.kind == 'magazine' and (book.publication_name or book.issue_label or book.issue_number) %}
+                <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    {{ book.publication_name or book.title }}{% if book.issue_number %} #{{ book.issue_number }}{% endif %}{% if book.issue_label %} · {{ book.issue_label }}{% endif %}{% if book.issue_year %} ({{ '%02d' % book.issue_month if book.issue_month else '' }}{% if book.issue_month and book.issue_year %}/{{ book.issue_year }}{% elif book.issue_year %}{{ book.issue_year }}{% endif %}){% endif %}
+                </h2>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ book.title }}</p>
+                {% if book.authors %}
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
+                {% endif %}
+                {% else %}
                 <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ book.title }}</h2>
                 {% if book.authors %}
                 <p class="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">
                     {{ book.authors|join(', ', attribute='name') }}
                 </p>
+                {% endif %}
                 {% endif %}
 
                 <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">

@@ -1,10 +1,14 @@
+from pathlib import Path
+
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
 )
 from sqlalchemy.orm import Session
 from starlette import status
 
+from app.config import settings
 from app.db import get_db_session
 from app.db.base import (
     Base,
@@ -13,6 +17,7 @@ from app.db.base import (
 from app.models import (
     Book,
     BookSeries,
+    Catalog,
     Tag,
 )
 from app.models.author import Author
@@ -24,6 +29,22 @@ router = APIRouter()
 
 @router.get("/seed_db", summary='Seed DB', status_code=status.HTTP_200_OK)
 def seed_db(db_session: Session = Depends(get_db_session)):
+    catalog = db_session.query(Catalog).first()
+    if catalog is None:
+        if not settings.books_directory:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Add a catalog before seeding the database",
+            )
+        catalog = Catalog(
+            name="Books",
+            root_path=str(Path(settings.books_directory).expanduser().resolve()),
+            kind="book",
+            enabled=True,
+        )
+        db_session.add(catalog)
+        db_session.flush()
+
     language = Language(code='en', name='English')
 
     lotr_series = BookSeries(name='Lord of the Rings')
@@ -40,15 +61,16 @@ def seed_db(db_session: Session = Depends(get_db_session)):
 
     first_book = Book(title="The Fellowship of the Ring", authors=[first_author], isbn="0-395-19395-8", format='pdf',
                       tags=[first_tag], publisher=first_publisher, language=language,
-                      series=lotr_series)
+                      series=lotr_series, catalog=catalog)
     second_book = Book(title="The Hobbit", authors=[first_author], isbn="0-395-19395-8", format='epub',
                        tags=[first_tag], publisher=first_publisher, language=language,
-                       series=lotr_series)
+                       series=lotr_series, catalog=catalog)
     third_book = Book(title="The Two Towers", authors=[first_author], isbn="0-395-19395-8",
                       format='epub', tags=[first_tag], publisher=first_publisher, language=language,
-                      series=lotr_series)
+                      series=lotr_series, catalog=catalog)
     fourth_book = Book(title="Foundation", authors=[second_author], isbn="0-395-19395-8", format='epub',
-                       tags=[second_tag], publisher=second_publisher, language=language, series=foundation_series)
+                       tags=[second_tag], publisher=second_publisher, language=language, series=foundation_series,
+                       catalog=catalog)
     db_session.add(first_book)
     db_session.add(second_book)
     db_session.add(third_book)

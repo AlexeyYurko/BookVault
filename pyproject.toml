@@ -1,6 +1,6 @@
 [project]
 name = "BookVault"
-version = "0.1.0"
+version = "0.2.0"
 description = "A self-hosted catalog for the books you already have on disk"
 authors = [
     { name = "Alexey Yurko", email = "a.yurko@gmail.com" },
@@ -27,8 +27,13 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest",
     "ruff",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [tool.isort]
 skip = ["env.py"]
@@ -60,3 +65,4 @@ max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"tests/**" = ["S101", "S603", "PLR2004"]

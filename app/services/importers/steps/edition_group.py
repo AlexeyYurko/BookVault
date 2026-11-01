@@ -18,6 +18,10 @@ class EditionGroupStep(PipelineStep):
         if not ctx.is_new or ctx.book is None:
             return ctx
 
+        catalog = getattr(ctx.importer, "catalog", None)
+        if catalog is not None and getattr(catalog, "kind", None) == "magazine":
+            return ctx
+
         just_added = ctx.book
         new_authors = [a.name for a in just_added.authors]
         existing = self._load_author_scoped(ctx, new_authors, exclude_id=just_added.id)
@@ -52,7 +56,11 @@ class EditionGroupStep(PipelineStep):
             ctx.store.session
             .query(Book)
             .join(Book.authors)
-            .filter(Book.id != exclude_id, Author.id.in_(author_ids))
+            .filter(
+                Book.id != exclude_id,
+                Book.catalog_id == ctx.importer.catalog.id,
+                Author.id.in_(author_ids),
+            )
             .distinct()
             .all()
         )

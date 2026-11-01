@@ -27,6 +27,12 @@ class BookCreationStep(PipelineStep):
             isbn=ctx.metadata.isbn,
             original_isbn=ctx.metadata.original_isbn,
             file_path=ctx.importer.file_path,
+            catalog_id=ctx.importer.catalog.id,
+            publication_name=getattr(ctx, "book_publication_name", None) or (ctx.metadata.title if getattr(ctx.importer.catalog, "kind", None) == "magazine" else None),
+            issue_number=getattr(ctx, "book_issue_number", None),
+            issue_year=getattr(ctx, "book_issue_year", None),
+            issue_month=getattr(ctx, "book_issue_month", None),
+            issue_label=getattr(ctx, "book_issue_label", None),
         )
         ctx.store.session.flush()
         return ctx

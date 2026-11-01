@@ -24,9 +24,16 @@
                 {% endif %}
             </div>
             <div class="mt-2">
+                {% if book.catalog.kind == 'magazine' and (book.publication_name or book.issue_label or book.issue_number) %}
+                <h3 class="truncate text-sm font-medium text-slate-900 dark:text-white" title="{{ book.publication_name or book.title }}">
+                    {{ book.publication_name or book.title }}{% if book.issue_number %} #{{ book.issue_number }}{% endif %}{% if book.issue_label %} · {{ book.issue_label }}{% endif %}{% if book.issue_year %} ({{ '%02d' % book.issue_month if book.issue_month else '' }}{% if book.issue_month and book.issue_year %}/{{ book.issue_year }}{% elif book.issue_year %}{{ book.issue_year }}{% endif %}){% endif %}
+                </h3>
+                <p class="truncate text-xs text-slate-500 dark:text-slate-400" title="{{ book.title }}">{{ book.title }}</p>
+                {% else %}
                 <h3 class="truncate text-sm font-medium text-slate-900 dark:text-white" title="{{ book.title }}">{{ book.title }}</h3>
                 {% if book.authors %}
                 <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
+                {% endif %}
                 {% endif %}
             </div>
         </a>

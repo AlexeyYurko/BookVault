@@ -1,6 +1,27 @@
-{% if error %}
+<div>
+    <label for="sync-catalog" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Catalog</label>
+    <select id="sync-catalog" name="catalog_id" class="input w-full" required
+        hx-get="{{ url_for('sync_folder_list') }}" hx-trigger="change" hx-target="#sync-form-body" hx-include="this"
+        {% if not catalogs %}disabled{% endif %}>
+        {% if has_enabled_catalogs %}
+        <option value="all" {% if selected_catalog_id == 'all' %}selected{% endif %}>All enabled catalogs</option>
+        {% endif %}
+        {% for catalog in catalogs %}
+        <option value="{{ catalog.id }}" {% if selected_catalog_id == catalog.id|string %}selected{% endif %}>
+            {{ catalog.name }}{% if not catalog.enabled %} (sync disabled){% endif %}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+{% if selected_catalog_id == 'all' %}
+<div data-all-catalogs class="rounded-md border border-slate-200 p-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+    All enabled catalogs will be scanned sequentially. Unavailable catalogs will be skipped with an error.
+</div>
+{% elif error %}
 <p data-sync-error role="alert" class="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
     {{ error }}
+    {% if not catalogs %}<a href="{{ url_for('manage_catalogs') }}" class="font-medium underline">Open catalog settings</a>{% endif %}
 </p>
 {% else %}
 <fieldset class="space-y-2">
@@ -22,7 +43,7 @@
     <p class="text-sm text-slate-500 dark:text-slate-400">No subfolders found.</p>
     {% endif %}
     <p class="text-xs text-slate-500 dark:text-slate-400">
-        Files placed directly in the books directory are only imported by a full sync.
+        Files placed directly in the catalog root are only imported by a full sync.
     </p>
 </fieldset>
 {% endif %}

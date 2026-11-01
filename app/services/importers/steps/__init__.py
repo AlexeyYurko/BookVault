@@ -5,6 +5,7 @@ from app.services.importers.steps.deduplication import DeduplicationStep
 from app.services.importers.steps.edition import EditionExtractionStep
 from app.services.importers.steps.edition_group import EditionGroupStep
 from app.services.importers.steps.extract_metadata import ExtractMetadataStep
+from app.services.importers.steps.issue_extraction import IssueExtractionStep
 from app.services.importers.steps.keyword_tags import KeywordEnrichmentStep
 from app.services.importers.steps.language import LanguageResolutionStep
 from app.services.importers.steps.path_tags import PathTagEnrichmentStep
@@ -19,6 +20,7 @@ __all__ = [
     "EditionExtractionStep",
     "EditionGroupStep",
     "ExtractMetadataStep",
+    "IssueExtractionStep",
     "KeywordEnrichmentStep",
     "LanguageResolutionStep",
     "PathTagEnrichmentStep",
