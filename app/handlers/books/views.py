@@ -107,7 +107,7 @@ def show_book(
 ):
     next_param = request.query_params.get("next") or request.headers.get("referer", "")
     back_url = str(next_url(request, next_param) or request.url_for("homepage"))
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "book_view.html",
         {
             "request": request,
@@ -132,7 +132,7 @@ def read_book(
         )
 
     back_url = next_url(request, request.query_params.get("next", "")) or str(request.url_for("homepage"))
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "reader.html",
         {
             "request": request,
@@ -165,6 +165,7 @@ def book_detail_panel(
 ):
     back_url = next_url(request, request.headers.get("referer", "")) or str(request.url_for("homepage"))
     return templates.TemplateResponse(
+        request,
         "book_detail_panel.html",
         {"request": request, "book": book, "back_url": back_url},
     )
@@ -206,7 +207,7 @@ def edit_book(
 
     library_url, return_url = edit_navigation_urls(request, request.query_params.get("next", ""))
 
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "book_edit.html",
         {
             "request": request,
@@ -257,7 +258,7 @@ def lookup_metadata(  # noqa: PLR0913
     result = book_service.lookup_values(book, query)
     library_url, return_url = edit_navigation_urls(request, next, back_url)
 
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "book_edit.html",
         {
             "request": request,
@@ -324,7 +325,7 @@ def update_book(  # noqa: PLR0913
     library_url, return_url = edit_navigation_urls(request, next, back_url)
 
     if validation.errors:
-        return templates.TemplateResponse(
+        return templates.TemplateResponse(request, 
             "book_edit.html",
             {
                 "request": request,
@@ -353,7 +354,7 @@ def search_link_candidates(
     query: str = Query(default=""),
 ):
     candidates = book_service.find_link_candidates(book, query)
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "edition_link_results.html",
         {"request": request, "book": book, "candidates": candidates},
     )
@@ -442,7 +443,7 @@ def add_tag(
     with book_service.transaction():
         book_service.add_tag(book, tag_name)
 
-    return templates.TemplateResponse("tags.html", {"request": request, "book": book})
+    return templates.TemplateResponse(request, "tags.html", {"request": request, "book": book})
 
 
 @router.delete("/{book_id}/tags/{tag_id}")
@@ -456,7 +457,7 @@ def remove_tag(
         if not book_service.remove_tag(book, tag_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
 
-    return templates.TemplateResponse("tags.html", {"request": request, "book": book})
+    return templates.TemplateResponse(request, "tags.html", {"request": request, "book": book})
 
 
 @router.post("/batch_action")

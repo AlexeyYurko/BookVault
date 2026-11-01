@@ -5,7 +5,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-import httpx
+import httpx2 as httpx
 
 from app.services.importers.isbn import canonical13, normalize_isbn
 

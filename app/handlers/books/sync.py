@@ -62,7 +62,7 @@ def _redirect(request: Request, route_name: str, message: str | None = None, **p
 
 @router.get("/sync")
 def sync_confirm(request: Request, catalog_service: CatalogServiceDependency, catalog_id: str = ""):
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "sync_confirm.html",
         {"request": request, **_sync_context(catalog_service, catalog_id)},
     )
@@ -70,7 +70,7 @@ def sync_confirm(request: Request, catalog_service: CatalogServiceDependency, ca
 
 @router.get("/sync/folders")
 def sync_folder_list(request: Request, catalog_service: CatalogServiceDependency, catalog_id: str = ""):
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, 
         "_sync_form.html",
         {"request": request, **_sync_context(catalog_service, catalog_id)},
     )
@@ -146,7 +146,7 @@ def sync_progress(request: Request, task_id: str, sync_service: SyncServiceDepen
     task = sync_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sync task not found")
-    return templates.TemplateResponse("sync_progress.html", {"request": request, "task": task})
+    return templates.TemplateResponse(request, "sync_progress.html", {"request": request, "task": task})
 
 
 @router.get("/sync/{task_id}/progress")
@@ -154,4 +154,4 @@ def sync_progress_fragment(request: Request, task_id: str, sync_service: SyncSer
     task = sync_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sync task not found")
-    return templates.TemplateResponse("sync_progress_fragment.html", {"request": request, "task": task})
+    return templates.TemplateResponse(request, "sync_progress_fragment.html", {"request": request, "task": task})

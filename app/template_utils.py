@@ -173,6 +173,7 @@ def render_book_list(  # noqa: PLR0913
     )
     template = "books_list.html" if request.headers.get("hx-request") == "true" else "index.html"
     return templates.TemplateResponse(
+        request,
         template,
         {
             "request": request,

@@ -38,7 +38,7 @@ def _redirect(request: Request, message: str) -> RedirectResponse:
 
 @router.get("/settings/catalogs")
 def manage_catalogs(request: Request, catalog_service: CatalogServiceDependency):
-    return templates.TemplateResponse("catalogs.html", _context(catalog_service, request))
+    return templates.TemplateResponse(request, "catalogs.html", _context(catalog_service, request))
 
 
 @router.get("/settings/catalogs/{catalog_id}/edit")
@@ -46,7 +46,7 @@ def edit_catalog(request: Request, catalog_id: int, catalog_service: CatalogServ
     catalog = catalog_service.get(catalog_id)
     if catalog is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Catalog not found")
-    return templates.TemplateResponse("catalogs.html", _context(catalog_service, request, editing=catalog))
+    return templates.TemplateResponse(request, "catalogs.html", _context(catalog_service, request, editing=catalog))
 
 
 @router.post("/settings/catalogs")
@@ -63,7 +63,7 @@ def create_catalog(  # noqa: PLR0913
         with catalog_service.transaction():
             catalog_service.create(name=name, root_path=root_path, kind=kind, enabled=enabled)
     except ValueError as exc:
-        return templates.TemplateResponse(
+        return templates.TemplateResponse(request, 
             "catalogs.html",
             _context(catalog_service, request, form=form, error=str(exc)),
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -89,7 +89,7 @@ def update_catalog(  # noqa: PLR0913
         with catalog_service.transaction():
             catalog_service.update(catalog, name=name, root_path=root_path, kind=kind, enabled=enabled)
     except ValueError as exc:
-        return templates.TemplateResponse(
+        return templates.TemplateResponse(request, 
             "catalogs.html",
             _context(catalog_service, request, editing=catalog, form=form, error=str(exc)),
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -106,7 +106,7 @@ def delete_catalog(request: Request, catalog_id: int, catalog_service: CatalogSe
         with catalog_service.transaction():
             catalog_service.delete(catalog)
     except ValueError as exc:
-        return templates.TemplateResponse(
+        return templates.TemplateResponse(request, 
             "catalogs.html",
             _context(catalog_service, request, error=str(exc)),
             status_code=status.HTTP_400_BAD_REQUEST,

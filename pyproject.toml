@@ -9,20 +9,20 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.162.0",
     "sqlalchemy>=2.0.35",
-    "ebooklib>=0.18",
-    "pillow>=10.4.0",
-    "uvicorn>=0.31.0",
-    "python-multipart>=0.0.12",
+    "ebooklib>=0.20",
+    "pillow>=13.0.0",
+    "uvicorn>=0.54.0",
+    "python-multipart>=0.0.33",
     "pypdf2>=3.0.1",
-    "pycryptodome>=3.21.0",
-    "pypdfium2>=4.30.0",
-    "jinja2>=3.1.4",
-    "pydantic-settings>=2.7.0",
-    "alembic>=1.13.0",
-    "rapidfuzz>=3.0.0",
-    "httpx>=0.28.1",
+    "pycryptodome>=4.2.0",
+    "pypdfium2>=5.14.0",
+    "jinja2>=3.1.6",
+    "pydantic-settings>=2.16.2",
+    "alembic>=1.20.1",
+    "rapidfuzz>=3.14.6",
+    "httpx2>=2.16.0",
 ]
 
 [dependency-groups]
