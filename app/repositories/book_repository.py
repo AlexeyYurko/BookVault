@@ -163,6 +163,15 @@ class BookRepository(AbstractRepository):
         ).all()
         return Page(books=books, total=total, page=page)
 
+    def reading_shelf(self, limit: int | None = 10) -> tuple[list[Book], int]:
+        marked = Book.reading_updated_at.isnot(None)
+        stmt = select(Book).where(marked).order_by(Book.reading_updated_at.desc(), Book.id.desc())
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        books = self.session.scalars(stmt).all()
+        total = self.session.scalar(select(func.count()).select_from(Book).where(marked)) or 0
+        return books, total
+
     def get_book_by_id(self, book_id: int) -> Book:
         book = self.session.scalar(select(Book).options(joinedload(Book.tags)).where(Book.id == book_id))
         return book

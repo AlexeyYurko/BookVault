@@ -75,6 +75,9 @@ class BookService:
     def get_book_by_id(self, book_id: int) -> Book | None:
         return self.store.book_repo.get_book_by_id(book_id)
 
+    def reading_shelf(self, limit: int | None = 10) -> tuple[list[Book], int]:
+        return self.store.book_repo.reading_shelf(limit=limit)
+
     def save_reading_progress(self, book_id: int, position: str | None, percent: float | None) -> Book | None:
         book = self.store.book_repo.get_book_by_id(book_id)
         if book is None:

@@ -195,6 +195,7 @@ def render_catalog(  # noqa: PLR0913
     tag_source: TagSource = TagSource.PAGE,
     route_kwargs: dict | None = None,
     extra_query: dict | None = None,
+    reading_shelf: bool = False,
 ):
     """Render a paginated book list from the request's paging, sort and filter params.
 
@@ -233,15 +234,20 @@ def render_catalog(  # noqa: PLR0913
     else:
         sidebar_tags = collect_book_tags(books)
 
+    context = {
+        "books": books,
+        "tags": sidebar_tags,
+        "edition_siblings": book_service.edition_siblings_map(books),
+        "active_filters": filters,
+        **book_service.filter_context(catalog_id, catalogs=catalogs),
+    }
+    if reading_shelf:
+        reading_books, reading_total = book_service.reading_shelf()
+        context.update(reading_books=reading_books, reading_total=reading_total)
+
     return render_book_list(
         request,
-        context={
-            "books": books,
-            "tags": sidebar_tags,
-            "edition_siblings": book_service.edition_siblings_map(books),
-            "active_filters": filters,
-            **book_service.filter_context(catalog_id, catalogs=catalogs),
-        },
+        context=context,
         route_name=route_name,
         page=result.page,
         per_page=per_page,
