@@ -15,7 +15,10 @@ def test_catalog_links_to_books_without_return_urls(make_catalog, make_book):
     assert response.status_code == 200
     assert f'href="http://testserver/books/{book.id}"' in response.text
     assert f'href="http://testserver/books/{book.id}/read"' in response.text
+    assert 'aria-label="Read now"' in response.text
     assert "?next=" not in response.text
+    assert "book-detail-panel" not in response.text
+    assert f"/books/{book.id}/detail" not in response.text
     assert 'src="http://testserver/static/js/navigation.js"' in response.text
 
 
@@ -25,21 +28,28 @@ def test_book_pages_use_canonical_navigation_links(make_catalog, make_book):
 
     with TestClient(app) as client:
         book_response = client.get(f"/books/{book.id}")
-        detail_response = client.get(f"/books/{book.id}/detail")
         reader_response = client.get(f"/books/{book.id}/read")
         edit_response = client.get(f"/books/{book.id}/edit")
+        removed_detail_response = client.get(f"/books/{book.id}/detail")
 
-    for response in (book_response, detail_response, reader_response, edit_response):
+    for response in (book_response, reader_response, edit_response):
         assert response.status_code == 200
         assert "?next=" not in response.text
 
+    assert removed_detail_response.status_code == 404
     assert 'href="http://testserver/" data-library-back' in book_response.text
     assert f'href="http://testserver/books/{book.id}/read"' in book_response.text
     assert f'href="http://testserver/books/{book.id}/edit"' in book_response.text
-    assert f'href="http://testserver/books/{book.id}"' in detail_response.text
+    assert "Book details" in book_response.text
+    assert "Tags" in book_response.text
+    assert "Download" in book_response.text
+    assert 'id="book-edit-form"' not in book_response.text
     assert f'href="http://testserver/books/{book.id}" data-history-back' in reader_response.text
     assert 'name="next"' not in edit_response.text
     assert 'name="back_url"' not in edit_response.text
+    assert "Edit metadata" in edit_response.text
+    assert 'id="book-edit-form"' in edit_response.text
+    assert f'href="http://testserver/books/{book.id}" data-history-back' in edit_response.text
     assert edit_response.text.count(f'href="http://testserver/books/{book.id}"') >= 2
 
 

@@ -1,0 +1,85 @@
+<div class="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div class="space-y-6">
+        {% if book.description %}
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
+                <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">About this book</h2>
+                <div class="prose prose-slate mt-4 max-w-none leading-relaxed dark:prose-invert">
+                    {{ book.description|safe }}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8">
+            <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Tags</h2>
+            <div id="tags-container" class="mt-4 flex flex-wrap items-center gap-2">
+                {% for tag in book.tags %}
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium lowercase text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                        {{ tag.name }}
+                        <button hx-delete="{{ url_for('remove_tag', book_id=book.id, tag_id=tag.id) }}"
+                                hx-target="#tags-container"
+                                class="font-bold leading-none text-indigo-400 transition-colors hover:text-red-600"
+                                aria-label="Remove {{ tag.name }}" title="Remove {{ tag.name }}">×</button>
+                    </span>
+                {% else %}
+                    <span class="text-sm text-slate-400 dark:text-slate-500">No tags yet</span>
+                {% endfor %}
+            </div>
+            <form hx-post="{{ url_for('add_tag', book_id=book.id) }}" hx-target="#tags-container"
+                  class="mt-5 flex gap-2">
+                <label for="new-tag" class="sr-only">New tag</label>
+                <input type="text" id="new-tag" name="tag_name" placeholder="Add a tag…" required
+                       class="input min-w-0 flex-1 py-2">
+                <button type="submit" class="btn btn-secondary shrink-0 px-4 py-2">Add tag</button>
+            </form>
+        </section>
+    </div>
+
+    <aside class="space-y-6">
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Book details</h2>
+            <dl class="mt-5 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-4 gap-y-4 text-sm">
+                {% if book.publication_name %}
+                    <dt class="text-slate-500 dark:text-slate-400">Publication</dt>
+                    <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.publication_name }}</dd>
+                {% endif %}
+                <dt class="text-slate-500 dark:text-slate-400">Edition</dt>
+                <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.edition or '—' }}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">ISBN</dt>
+                <dd class="break-all font-medium text-slate-800 dark:text-slate-200">{{ book.isbn or '—' }}</dd>
+                {% if book.original_isbn %}
+                    <dt class="text-slate-500 dark:text-slate-400">Original ISBN</dt>
+                    <dd class="break-all font-medium text-slate-800 dark:text-slate-200">{{ book.original_isbn }}</dd>
+                {% endif %}
+                <dt class="text-slate-500 dark:text-slate-400">Format</dt>
+                <dd class="font-medium uppercase text-slate-800 dark:text-slate-200">{{ book.format or '—' }}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">Publisher</dt>
+                <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.publisher.name if book.publisher else '—' }}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">Language</dt>
+                <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.language.name if book.language else (book.language_code or '—') }}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">Series</dt>
+                <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.series.name if book.series else '—' }}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">Collection</dt>
+                <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.collection[0].name if book.collection else '—' }}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">Added</dt>
+                <dd class="font-medium text-slate-800 dark:text-slate-200">{{ book.added_at.strftime('%Y-%m-%d') if book.added_at else '—' }}</dd>
+            </dl>
+        </section>
+
+        {% if edition_siblings %}
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Other editions</h2>
+                <div class="mt-4 space-y-2">
+                    {% for sibling in edition_siblings %}
+                        <a href="{{ url_for('show_book', book_id=sibling.id) }}"
+                           class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-slate-700 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10">
+                            <span class="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200" title="{{ sibling.title }}">{{ sibling.title }}</span>
+                            <span class="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                                {{ sibling.language.name if sibling.language else (sibling.language_code or '?') }}{% if sibling.format %} · {{ sibling.format|upper }}{% endif %}
+                            </span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+    </aside>
+</div>

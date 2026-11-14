@@ -4,21 +4,4 @@
     <div id="books-list" tabindex="-1" aria-label="Book results" class="focus:outline-none">
         {% include 'books_list.html' %}
     </div>
-
-    <script>
-        (function () {
-            const bookId = sessionStorage.getItem('last-selected-book-id');
-            if (!bookId) return;
-            const panel = document.getElementById('book-detail-panel');
-            if (!panel) return;
-            const bookIsVisible = Array.from(document.querySelectorAll('.book-detail-trigger')).some(function (trigger) {
-                return trigger.getAttribute('data-book-id') === bookId;
-            });
-            if (!bookIsVisible) {
-                sessionStorage.removeItem('last-selected-book-id');
-                return;
-            }
-            htmx.ajax('GET', '/books/' + encodeURIComponent(bookId) + '/detail', { target: '#book-detail-panel' });
-        })();
-    </script>
 {% endblock %}
