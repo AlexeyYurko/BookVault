@@ -105,8 +105,6 @@ def show_book(
     book: BookDependency,
     book_service: BookServiceDependency,
 ):
-    next_param = request.query_params.get("next") or request.headers.get("referer", "")
-    back_url = str(next_url(request, next_param) or request.url_for("homepage"))
     return templates.TemplateResponse(request, 
         "book_view.html",
         {
@@ -114,7 +112,6 @@ def show_book(
             "book": book,
             "tags": book.tags,
             "edition_siblings": book_service.edition_siblings(book),
-            "back_url": back_url,
         },
     )
 
@@ -131,14 +128,12 @@ def read_book(
             detail="This format cannot be read in the browser",
         )
 
-    back_url = next_url(request, request.query_params.get("next", "")) or str(request.url_for("homepage"))
     return templates.TemplateResponse(request, 
         "reader.html",
         {
             "request": request,
             "book": book,
             "reader_format": reader_format,
-            "back_url": back_url,
         },
     )
 
@@ -163,30 +158,11 @@ def book_detail_panel(
     request: Request,
     book: BookDependency,
 ):
-    back_url = next_url(request, request.headers.get("referer", "")) or str(request.url_for("homepage"))
     return templates.TemplateResponse(
         request,
         "book_detail_panel.html",
-        {"request": request, "book": book, "back_url": back_url},
+        {"request": request, "book": book},
     )
-
-
-def next_url(request: Request, url: str) -> str | None:
-    if (
-        url
-        and url.startswith(str(request.base_url))
-        and "/edit" not in url
-        and "/lookup" not in url
-    ):
-        return url
-    return None
-
-
-def edit_navigation_urls(request: Request, next_param: str = "", back_param: str = "") -> tuple[str | None, str | None]:
-    referer = request.headers.get("referer", "")
-    library_url = next_url(request, next_param) or next_url(request, referer)
-    return_url = next_url(request, back_param) or next_url(request, referer) or library_url
-    return library_url, return_url
 
 
 @router.get("/{book_id}/edit")
@@ -205,8 +181,6 @@ def edit_book(
         message, is_ok = EDITION_NOTICES[edition_code]
         notice = {"message": message, "is_ok": is_ok}
 
-    library_url, return_url = edit_navigation_urls(request, request.query_params.get("next", ""))
-
     return templates.TemplateResponse(request, 
         "book_edit.html",
         {
@@ -216,8 +190,6 @@ def edit_book(
             "notice": notice,
             "edition_siblings": book_service.edition_siblings(book),
             "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
-            "next_url": library_url,
-            "return_url": return_url,
             **book_service.edit_form_context(),
         },
     )
@@ -247,16 +219,13 @@ def unprotect_fields(
 
 
 @router.post("/{book_id}/lookup")
-def lookup_metadata(  # noqa: PLR0913
+def lookup_metadata(
     request: Request,
     book: BookDependency,
     book_service: BookServiceDependency,
     query: str = Form(default=""),
-    next: str = Form(default=""),
-    back_url: str = Form(default=""),
 ):
     result = book_service.lookup_values(book, query)
-    library_url, return_url = edit_navigation_urls(request, next, back_url)
 
     return templates.TemplateResponse(request, 
         "book_edit.html",
@@ -268,8 +237,6 @@ def lookup_metadata(  # noqa: PLR0913
             "error": result.error,
             "edition_siblings": book_service.edition_siblings(book),
             "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
-            "next_url": library_url,
-            "return_url": return_url,
             **book_service.edit_form_context(),
         },
     )
@@ -298,8 +265,6 @@ def update_book(  # noqa: PLR0913
     issue_year: str = Form(default=""),
     issue_month: str = Form(default=""),
     issue_label: str = Form(default=""),
-    next: str = Form(default=""),
-    back_url: str = Form(default=""),
 ):
     dto = EditBookDTO(
         title=title.strip(),
@@ -322,7 +287,6 @@ def update_book(  # noqa: PLR0913
         issue_label=issue_label,
     )
     validation = book_service.validate_edit(dto)
-    library_url, return_url = edit_navigation_urls(request, next, back_url)
 
     if validation.errors:
         return templates.TemplateResponse(request, 
@@ -332,8 +296,6 @@ def update_book(  # noqa: PLR0913
                 "book": book,
                 "values": book_service.edit_values(book, dto),
                 "error": " ".join(validation.errors),
-                "next_url": library_url,
-                "return_url": return_url,
                 **book_service.edit_form_context(),
             },
         )
@@ -341,8 +303,6 @@ def update_book(  # noqa: PLR0913
     book_service.apply_edit(book, dto, validation)
 
     target = request.url_for("show_book", book_id=book.id)
-    if library_url:
-        target = target.include_query_params(next=library_url)
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
 

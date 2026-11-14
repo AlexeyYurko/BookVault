@@ -62,7 +62,7 @@
 
         <div class="mt-4 flex items-center gap-2">
             {% if book.file_path %}
-                {% set read_href = (url_for('read_book', book_id=book.id) ~ '?next=' ~ (back_url|urlencode)) if readable else url_for('serve_book_file', book_id=book.id) %}
+                {% set read_href = url_for('read_book', book_id=book.id) if readable else url_for('serve_book_file', book_id=book.id) %}
                 {% set read_label = ('Continue' if pct else 'Read') if readable else 'Open' %}
                 <a href="{{ read_href }}"
                    {% if not readable %}target="_blank" rel="noopener"{% endif %}
@@ -108,7 +108,7 @@
             </div>
         {% endif %}
 
-        <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ back_url|urlencode }}"
+        <a href="{{ url_for('show_book', book_id=book.id) }}"
            class="mt-3 inline-block text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300">
             Full details
         </a>
