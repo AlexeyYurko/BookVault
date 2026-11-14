@@ -168,7 +168,7 @@
                                             <!-- Title & Author, Read, editions -->
                                             <div class="min-w-0" role="cell">
                                                 <div class="flex items-center gap-1">
-                                                    <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ request.url | string | urlencode }}"
+                                                    <a href="{{ url_for('show_book', book_id=book.id) }}"
                                                        class="book-detail-trigger block min-w-0 flex-1 cursor-pointer rounded transition-colors hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:text-indigo-400"
                                                        data-book-id="{{ book.id }}"
                                                        hx-get="{{ url_for('book_detail_panel', book_id=book.id) }}"
@@ -203,7 +203,7 @@
                                                     </a>
                                                     {% set readable = book.file_path and (book.file_path.lower().endswith('.pdf') or book.file_path.lower().endswith('.epub')) %}
                                                     {% if book.file_path %}
-                                                        {% set read_href = (url_for('read_book', book_id=book.id) ~ '?next=' ~ (request.url|string|urlencode)) if readable else url_for('serve_book_file', book_id=book.id) %}
+                                                        {% set read_href = url_for('read_book', book_id=book.id) if readable else url_for('serve_book_file', book_id=book.id) %}
                                                         <a href="{{ read_href }}"
                                                            {% if not readable %}target="_blank"
                                                            rel="noopener"{% endif %}
@@ -222,7 +222,7 @@
                                                         </a>
                                                     {% endif %}
                                                 </div>
-                                                {{ edition_badges(request, book, edition_siblings[book.id], request.url | string) if edition_siblings and book.id in edition_siblings else '' }}
+                                                {{ edition_badges(request, book, edition_siblings[book.id]) if edition_siblings and book.id in edition_siblings else '' }}
                                             </div>
 
                                             <!-- Publisher -->

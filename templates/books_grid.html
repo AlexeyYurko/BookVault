@@ -1,7 +1,7 @@
 <div id="books-grid" class="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3">
     {% for book in books %}
         <div class="group" data-book-card>
-            <a href="{{ url_for('show_book', book_id=book.id) }}?next={{ request.url | string | urlencode }}"
+            <a href="{{ url_for('show_book', book_id=book.id) }}"
                class="block cursor-pointer rounded-md book-detail-trigger focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                data-book-id="{{ book.id }}"
                hx-get="{{ url_for('book_detail_panel', book_id=book.id) }}"
@@ -58,7 +58,7 @@
                 </div>
             </a>
             {% from 'edition_badges.html' import edition_badges %}
-            {{ edition_badges(request, book, edition_siblings[book.id], request.url | string) if edition_siblings and book.id in edition_siblings else '' }}
+            {{ edition_badges(request, book, edition_siblings[book.id]) if edition_siblings and book.id in edition_siblings else '' }}
         </div>
     {% else %}
         <div class="col-span-full flex flex-col items-center justify-center gap-2 py-12 text-center">
