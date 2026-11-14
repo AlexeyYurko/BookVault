@@ -31,10 +31,8 @@
     </div>
     <div class="space-y-3">
         {% set percent = (task.processed * 100 / task.total) | round(0, 'floor') | int if task.total else 0 %}
-        <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"
-            role="progressbar" aria-label="Library synchronization" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percent }}">
-            <div class="h-full rounded-full bg-indigo-600 transition-all duration-300" style="width: {{ percent }}%"></div>
-        </div>
+        <progress class="progress-bar h-2.5" value="{{ percent }}" max="100"
+                  aria-label="Library synchronization"></progress>
         <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span>{{ task.processed }} / {{ task.total }} ({{ task.added }} added, {{ task.skipped }} skipped{% if task.errors %}, {{ task.errors }} errors{% endif %})</span>
             <span class="max-w-[240px] truncate">{{ task.current_catalog ~ ': ' if task.current_catalog else '' }}{{ task.current_file or 'Processing...' }}</span>

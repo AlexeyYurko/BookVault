@@ -23,10 +23,8 @@
                         <span>Reading progress</span>
                         <span class="tabular-nums">{{ pct }}%</span>
                     </div>
-                    <div class="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700" role="progressbar"
-                         aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}">
-                        <div class="h-full rounded-full bg-indigo-500" style="width: {{ pct }}%"></div>
-                    </div>
+                    <progress class="progress-bar h-1.5" value="{{ pct }}" max="100"
+                              aria-label="Reading progress"></progress>
                 </div>
             {% endif %}
         </div>
@@ -79,7 +77,7 @@
                         <a href="{{ read_href }}" {% if not readable %}target="_blank" rel="noopener"{% endif %}
                            class="btn btn-primary px-4 py-2.5">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8-11-8z"/>
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
                             </svg>
                             {{ 'Continue reading' if readable and book.reading_percent else ('Read' if readable else 'Open') }}
