@@ -48,20 +48,6 @@
             scrollbar-width: thin;
             scrollbar-color: rgb(148 163 184 / .45) transparent;
         }
-
-        /* The book shown in the detail panel: accent rail on the row, ring on the cover. */
-        body [data-book-row][data-selected] {
-            background-color: rgb(238 242 255);
-            box-shadow: inset 3px 0 0 #6366f1;
-        }
-
-        .dark body [data-book-row][data-selected] {
-            background-color: rgb(99 102 241 / .14);
-        }
-
-        body [data-book-card][data-selected] .cover-frame {
-            box-shadow: 0 0 0 2px #6366f1;
-        }
     </style>
     <style type="text/tailwindcss">
         @layer components {
@@ -143,23 +129,7 @@
         sync();
     })();
 
-    // Mark the row/card whose details are open in the side panel.
-    window.bvMarkSelected = function (id) {
-        document.querySelectorAll('.book-detail-trigger').forEach(function (trigger) {
-            const holder = trigger.closest('[data-book-row], [data-book-card]');
-            if (!holder) return;
-            holder.toggleAttribute('data-selected', trigger.getAttribute('data-book-id') === String(id));
-        });
-    };
-    document.addEventListener('DOMContentLoaded', function () {
-        try {
-            const id = sessionStorage.getItem('last-selected-book-id');
-            if (id) window.bvMarkSelected(id);
-        } catch (e) { /* storage unavailable */
-        }
-    });
-
-    // Keyboard: "/" focuses search, "j" / "k" step through the visible books.
+    // Keyboard: "/" focuses search.
     document.addEventListener('keydown', function (e) {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const el = e.target;
@@ -173,23 +143,7 @@
                 search.focus();
                 search.select();
             }
-            return;
         }
-        if (e.key !== 'j' && e.key !== 'k') return;
-
-        const triggers = Array.from(document.querySelectorAll('.book-detail-trigger'))
-            .filter(function (t) {
-                return t.offsetParent !== null;
-            });
-        if (!triggers.length) return;
-        const current = triggers.findIndex(function (t) {
-            return t.closest('[data-selected]');
-        });
-        const next = e.key === 'j' ? Math.min(current + 1, triggers.length - 1) : Math.max(current - 1, 0);
-        e.preventDefault();
-        if (next === current) return;
-        triggers[next].click();
-        (triggers[next].closest('[data-book-row], [data-book-card]') || triggers[next]).scrollIntoView({block: 'nearest'});
     });
 
     document.getElementById('theme-toggle').addEventListener('click', function () {
@@ -200,16 +154,7 @@
 
     document.body.addEventListener('htmx:beforeRequest', function (event) {
         const target = event.detail.target;
-        if (!target) return;
-        target.setAttribute('aria-busy', 'true');
-        if (target.id === 'book-detail-panel') {
-            target.classList.remove('hidden');
-            const trigger = event.detail.elt && event.detail.elt.closest ? event.detail.elt.closest('.book-detail-trigger') : null;
-            const path = (event.detail.pathInfo && event.detail.pathInfo.requestPath) || '';
-            const match = /\/books\/(\d+)\/detail/.exec(path);
-            const id = trigger ? trigger.getAttribute('data-book-id') : (match ? match[1] : null);
-            if (id) window.bvMarkSelected(id);
-        }
+        if (target) target.setAttribute('aria-busy', 'true');
     });
 
     document.body.addEventListener('htmx:afterRequest', function (event) {
@@ -222,9 +167,6 @@
         if (!target) return;
 
         if (target.id === 'books-list') {
-            sessionStorage.removeItem('last-selected-book-id');
-            target.focus({preventScroll: true});
-        } else if (target.id === 'book-detail-panel') {
             target.focus({preventScroll: true});
         }
     });

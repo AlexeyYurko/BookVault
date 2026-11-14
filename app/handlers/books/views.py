@@ -110,7 +110,7 @@ def show_book(
         {
             "request": request,
             "book": book,
-            "tags": book.tags,
+            "editing": False,
             "edition_siblings": book_service.edition_siblings(book),
         },
     )
@@ -153,18 +153,6 @@ def save_reading_progress(
     return {"status": "ok"}
 
 
-@router.get("/{book_id}/detail")
-def book_detail_panel(
-    request: Request,
-    book: BookDependency,
-):
-    return templates.TemplateResponse(
-        request,
-        "book_detail_panel.html",
-        {"request": request, "book": book},
-    )
-
-
 @router.get("/{book_id}/edit")
 def edit_book(
     request: Request,
@@ -182,10 +170,11 @@ def edit_book(
         notice = {"message": message, "is_ok": is_ok}
 
     return templates.TemplateResponse(request, 
-        "book_edit.html",
+        "book_view.html",
         {
             "request": request,
             "book": book,
+            "editing": True,
             "values": book_service.edit_values(book),
             "notice": notice,
             "edition_siblings": book_service.edition_siblings(book),
@@ -228,10 +217,11 @@ def lookup_metadata(
     result = book_service.lookup_values(book, query)
 
     return templates.TemplateResponse(request, 
-        "book_edit.html",
+        "book_view.html",
         {
             "request": request,
             "book": book,
+            "editing": True,
             "values": result.values,
             "notice": result.notice,
             "error": result.error,
@@ -290,12 +280,15 @@ def update_book(  # noqa: PLR0913
 
     if validation.errors:
         return templates.TemplateResponse(request, 
-            "book_edit.html",
+            "book_view.html",
             {
                 "request": request,
                 "book": book,
+                "editing": True,
                 "values": book_service.edit_values(book, dto),
                 "error": " ".join(validation.errors),
+                "edition_siblings": book_service.edition_siblings(book),
+                "protected_fields": [FIELD_LABELS[f] for f in (book.manually_updated_fields or []) if f in FIELD_LABELS],
                 **book_service.edit_form_context(),
             },
         )
