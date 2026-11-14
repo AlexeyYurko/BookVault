@@ -126,6 +126,23 @@
     cursor: none;
 }
 
+/* Collapsible reading shelf: keep the native details behavior, restyle the marker. */
+#reading-shelf > summary {
+    list-style: none;
+}
+
+#reading-shelf > summary::-webkit-details-marker {
+    display: none;
+}
+
+#reading-shelf .shelf-chevron {
+    transition: transform 0.15s ease;
+}
+
+#reading-shelf[open] .shelf-chevron {
+    transform: rotate(180deg);
+}
+
 /* Sync confirmation dialog backdrop */
 #sync-dialog::backdrop {
     background-color: rgba(15, 23, 42, 0.5);

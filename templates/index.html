@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
     <h1 class="sr-only">Your library</h1>
+    {% if reading_books is defined and reading_books %}
+        {# Same width container as books_list.html so the shelf lines up with the filters and the list. #}
+        <div class="mx-auto mt-2 w-full max-w-[2200px] px-3 sm:px-4">
+            {% include 'partials/reading_shelf.html' %}
+        </div>
+    {% endif %}
     <div id="books-list" tabindex="-1" aria-label="Book results" class="focus:outline-none">
         {% include 'books_list.html' %}
     </div>
