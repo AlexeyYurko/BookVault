@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>{% block title %}BookVault — your personal library{% endblock %}</title>
     <meta name="description" content="BookVault — your personal book library">
     <link rel="icon"
@@ -29,9 +30,12 @@
     <script>
         // Apply saved theme before first paint to avoid a flash of the wrong theme.
         (function () {
-            const theme = localStorage.getItem('theme') ||
+            const stored = localStorage.getItem('theme');
+            const theme = stored ||
                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             if (theme === 'dark') document.documentElement.classList.add('dark');
+            const meta = document.querySelector('meta[name="color-scheme"]');
+            if (meta) meta.content = stored || 'light dark';
         })();
     </script>
     <link href="{{ url_for('static', path='css/styles.css') }}?v={{ css_version }}" rel="stylesheet"/>
@@ -42,6 +46,15 @@
     <style>
         :root {
             --header-h: 4rem;
+            color-scheme: light dark;
+        }
+
+        :root:has(> head > meta[name="color-scheme"][content="dark"]) {
+            color-scheme: dark;
+        }
+
+        :root:has(> head > meta[name="color-scheme"][content="light"]) {
+            color-scheme: light;
         }
 
         * {
@@ -149,6 +162,8 @@
     document.getElementById('theme-toggle').addEventListener('click', function () {
         const isDark = document.documentElement.classList.toggle('dark');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        const meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta) meta.content = isDark ? 'dark' : 'light';
         window.dispatchEvent(new CustomEvent('bookvault:themechange', {detail: {dark: isDark}}));
     });
 
