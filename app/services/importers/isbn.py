@@ -46,6 +46,16 @@ def canonical13(isbn: str) -> str:
     return isbn
 
 
+def canonical_isbn(raw: str | None) -> str | None:
+    """Normalize and validate free-form ISBN input, returning its ISBN-13 form.
+
+    Invalid or empty values return ``None`` so callers can treat the field as
+    absent instead of persisting an unusable identifier.
+    """
+    isbn = normalize_isbn(raw or "")
+    return canonical13(isbn) if isbn else None
+
+
 def extract_isbns(text: str) -> list[str]:
     """Scan free text, returning valid ISBNs in document order, deduped by canonical form."""
     if not text:

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.models import Book, BookSeries
 from app.models.language import Language
 from app.repositories.book_repository import DEFAULT_SORT_BY, DEFAULT_SORT_ORDER, Page
-from app.services.importers.isbn import canonical13, normalize_isbn
+from app.services.importers.isbn import canonical_isbn
 from app.services.metadata_lookup import BookMetadata, MetadataLookup
 from app.services.metadata_resync import (
     mark_fields_updated,
@@ -190,6 +190,10 @@ class BookService:
         publications = []
         if catalog_id is not None or any(catalog.kind == "magazine" for catalog in catalogs):
             publications = self.store.book_repo.get_publications_linked_to_books(catalog_id)
+        if active_catalog is not None:
+            show_issue_columns = active_catalog.kind == "magazine"
+        else:
+            show_issue_columns = any(catalog.kind == "magazine" for catalog in catalogs)
         return {
             "authors": self.store.book_repo.get_authors_linked_to_books(catalog_id),
             "languages": self.store.book_repo.get_languages_linked_to_books(catalog_id),
@@ -199,6 +203,7 @@ class BookService:
             "publications": publications,
             "catalogs": catalogs,
             "active_catalog": active_catalog,
+            "show_issue_columns": show_issue_columns,
         }
 
     def edit_form_context(self) -> dict:
@@ -218,8 +223,7 @@ class BookService:
             reset_field_protection(book)
 
     def normalized_isbn(self, raw: str) -> str | None:
-        isbn = normalize_isbn(raw)
-        return canonical13(isbn) if isbn else None
+        return canonical_isbn(raw)
 
     def edit_values(self, book: Book, dto: EditBookDTO | None = None) -> dict:
         if dto is not None:
@@ -289,7 +293,7 @@ class BookService:
         if metadata.publisher:
             values["publisher"] = metadata.publisher
         if metadata.isbn:
-            values["isbn"] = metadata.isbn
+            values["isbn"] = canonical_isbn(metadata.isbn) or metadata.isbn
         if metadata.description:
             values["description"] = metadata.description
         if metadata.language_code in valid_language_codes:

@@ -164,7 +164,7 @@ class BookRepository(AbstractRepository):
         return Page(books=books, total=total, page=page)
 
     def reading_shelf(self, limit: int | None = 10) -> tuple[list[Book], int]:
-        marked = Book.reading_updated_at.isnot(None)
+        marked = Book.reading_percent > 0
         stmt = select(Book).where(marked).order_by(Book.reading_updated_at.desc(), Book.id.desc())
         if limit is not None:
             stmt = stmt.limit(limit)

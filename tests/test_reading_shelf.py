@@ -64,6 +64,23 @@ def test_reading_shelf_can_expand_to_every_marked_book(make_catalog, make_book, 
     assert "Unread Book" not in response.text
 
 
+def test_reading_shelf_skips_books_without_progress(make_catalog, make_book, store):
+    catalog = make_catalog("Books")
+    started = make_book(catalog, "Started Book")
+    _mark_read(store, started, minutes_ago=1, percent=40)
+    opened = make_book(catalog, "Opened But Not Read")
+    _mark_read(store, opened, minutes_ago=0, percent=0)
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    shelf = _shelf_html(response.text)
+    assert "Started Book" in shelf
+    assert "Opened But Not Read" not in shelf
+    assert "1 book in progress" in shelf
+
+
 def test_reading_shelf_is_only_part_of_the_homepage(make_catalog, make_book, store):
     catalog = make_catalog("Books")
     book = make_book(catalog, "Read Book")
