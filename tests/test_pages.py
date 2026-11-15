@@ -30,6 +30,47 @@ def test_unknown_catalog_filter_is_ignored(make_catalog, make_book):
     assert "Visible Book" in response.text
 
 
+def test_book_catalogs_hide_issue_sort_controls(make_catalog, make_book):
+    catalog = make_catalog("Books")
+    make_book(catalog, "Plain Book")
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "sort_by=issue_year" not in response.text
+
+
+def test_magazine_catalogs_get_issue_sort_controls(make_catalog, make_book, store):
+    catalog = make_catalog("Magazines", kind="magazine")
+    book = make_book(catalog, "Retro Gamer")
+    book.publication_name = "Retro Gamer"
+    book.issue_number = "123"
+    book.issue_year = 2024
+    book.issue_month = 5
+    store.session.commit()
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "sort_by=issue_year" in response.text
+    assert "sort_by=publication_name" in response.text
+
+
+def test_book_edition_is_shown_in_the_catalog(make_catalog, make_book, store):
+    catalog = make_catalog("Books")
+    book = make_book(catalog, "Design Patterns")
+    book.edition = "2nd Edition"
+    store.session.commit()
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "2nd Edition" in response.text
+
+
 def test_catalog_settings_page_lists_catalogs(make_catalog):
     make_catalog("My Books")
 

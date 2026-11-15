@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.services.importers.exceptions import ImportBookException
+from app.services.importers.isbn import canonical_isbn
 from app.services.importers.pipeline import PipelineStep
 from app.services.importers.text_utils import clean_description
 
@@ -26,5 +27,9 @@ class ExtractMetadataStep(PipelineStep):
             return None
 
         ctx.metadata.description = clean_description(ctx.metadata.description)
+        # store one canonical ISBN-13 form in every import/resync path; the
+        # original edition ISBN is canonicalized the same way when present
+        ctx.metadata.isbn = canonical_isbn(ctx.metadata.isbn)
+        ctx.metadata.original_isbn = canonical_isbn(ctx.metadata.original_isbn)
 
         return ctx

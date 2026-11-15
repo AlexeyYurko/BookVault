@@ -1,6 +1,11 @@
 {% set current_tags = request.query_params.get('tags', '').split(',') | map('trim') | reject('equalto', '') | list %}
-{# List columns: one template shared by the header and rows. Title takes all free space; Added only from 2xl. #}
-{% set cols = 'grid-cols-[1.25rem_1.75rem_minmax(0,1fr)_8rem_5rem_9rem] 2xl:grid-cols-[1.25rem_1.75rem_minmax(0,1fr)_9rem_5rem_6rem_11rem]' %}
+{# List columns: one template shared by the header and rows. Title takes all free space; Added only from 2xl.
+   The Issue column only exists when a magazine catalog is in scope. #}
+{% if show_issue_columns %}
+    {% set cols = 'grid-cols-[1.25rem_1.75rem_minmax(0,1fr)_6rem_8rem_5rem_9rem] 2xl:grid-cols-[1.25rem_1.75rem_minmax(0,1fr)_6rem_9rem_5rem_6rem_11rem]' %}
+{% else %}
+    {% set cols = 'grid-cols-[1.25rem_1.75rem_minmax(0,1fr)_8rem_5rem_9rem] 2xl:grid-cols-[1.25rem_1.75rem_minmax(0,1fr)_9rem_5rem_6rem_11rem]' %}
+{% endif %}
 {% from 'edition_badges.html' import edition_badges %}
 <div class="mx-auto mt-2 w-full max-w-[2200px] px-3 sm:px-4">
     <div class="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -54,7 +59,11 @@
                     <!-- Sort bar (stays put, like the list header) -->
                     <div class="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                         <span class="mr-1">Sort by</span>
-                        {% for field, label in (('title', 'Title'), ('added_at', 'Added'), ('publisher_id', 'Publisher'), ('language_code', 'Language')) %}
+                        {% set sort_fields = [('title', 'Title'), ('added_at', 'Added'), ('publisher_id', 'Publisher'), ('language_code', 'Language')] %}
+                        {% if show_issue_columns %}
+                            {% set sort_fields = [('title', 'Title'), ('issue_year', 'Issue'), ('publication_name', 'Publication'), ('added_at', 'Added'), ('publisher_id', 'Publisher'), ('language_code', 'Language')] %}
+                        {% endif %}
+                        {% for field, label in sort_fields %}
                             {% set sorted_now = pagination.is_sorted(field) %}
                             <a href="{{ pagination.sort_url(field) }}" hx-get="{{ pagination.sort_url(field) }}"
                                hx-target="#books-list" hx-push-url="true"
@@ -101,6 +110,19 @@
                                                                                     class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
                                     </a>
                                 </div>
+                                {% if show_issue_columns %}
+                                    <div role="columnheader"
+                                         {% if pagination.is_sorted('issue_year') %}aria-sort="{{ 'descending' if pagination.sort_order == 'desc' else 'ascending' }}"{% endif %}>
+                                        <a href="{{ pagination.sort_url('issue_year') }}"
+                                           hx-get="{{ pagination.sort_url('issue_year') }}" hx-target="#books-list"
+                                           hx-push-url="true"
+                                           class="inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-slate-900 dark:hover:text-white">
+                                            Issue
+                                            {% if pagination.is_sorted('issue_year') %}<span aria-hidden="true"
+                                                                                                  class="text-indigo-600 dark:text-indigo-400">{{ '▼' if pagination.sort_order == 'desc' else '▲' }}</span>{% endif %}
+                                        </a>
+                                    </div>
+                                {% endif %}
                                 <div role="columnheader"
                                      {% if pagination.is_sorted('publisher_id') %}aria-sort="{{ 'descending' if pagination.sort_order == 'desc' else 'ascending' }}"{% endif %}>
                                     <a href="{{ pagination.sort_url('publisher_id') }}"
@@ -194,8 +216,8 @@
                                                                     {{ book.authors|join(', ', attribute='name') }}{% endif %}</div>
                                                         {% else %}
                                                             <div class="truncate font-serif text-[15px] font-medium leading-5 text-slate-900 dark:text-white">{{ book.title }}</div>
-                                                            {% if book.authors %}
-                                                                <div class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</div>
+                                                            {% if book.authors or book.edition %}
+                                                                <div class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}{% if book.authors and book.edition %} · {% endif %}{% if book.edition %}{{ book.edition }}{% endif %}</div>
                                                             {% endif %}
                                                         {% endif %}
                                                     </a>
@@ -222,6 +244,21 @@
                                                 </div>
                                                 {{ edition_badges(request, book, edition_siblings[book.id]) if edition_siblings and book.id in edition_siblings else '' }}
                                             </div>
+
+                                            <!-- Issue -->
+                                            {% if show_issue_columns %}
+                                                <div class="truncate text-xs text-slate-500 dark:text-slate-400"
+                                                     role="cell">
+                                                    {% if book.issue_number or book.issue_year or book.issue_month %}
+                                                        {% if book.issue_number %}#{{ book.issue_number }}{% endif %}
+                                                        {% if book.issue_number and (book.issue_year or book.issue_month) %} · {% endif %}
+                                                        {% if book.issue_year %}{{ book.issue_year }}{% endif %}
+                                                        {% if book.issue_month %}‑{{ '%02d' % book.issue_month }}{% endif %}
+                                                    {% else %}
+                                                        <span class="text-slate-400 dark:text-slate-500">—</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
 
                                             <!-- Publisher -->
                                             <div class="truncate text-xs text-slate-600 dark:text-slate-300"
@@ -270,7 +307,7 @@
                                         </div>
                                     {% else %}
                                         <div role="row">
-                                            <div role="cell" aria-colspan="7"
+                                            <div role="cell" aria-colspan="{{ 8 if show_issue_columns else 7 }}"
                                                  class="flex flex-col items-center justify-center gap-2 p-12 text-center">
                                                 <svg class="h-10 w-10 text-slate-300 dark:text-slate-600" fill="none"
                                                      viewBox="0 0 24 24"

@@ -44,8 +44,11 @@
                     {% else %}
                         <h3 class="truncate font-serif text-[15px] font-medium leading-5 text-slate-900 dark:text-white"
                             title="{{ book.title }}">{{ book.title }}</h3>
-                        {% if book.authors %}
-                            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ book.authors|join(', ', attribute='name') }}</p>
+                        {% if book.authors or book.edition %}
+                            <p class="truncate text-xs text-slate-500 dark:text-slate-400"
+                               title="{{ book.authors|join(', ', attribute='name') }}{% if book.authors and book.edition %} · {% endif %}{{ book.edition or '' }}">
+                                {{ book.authors|join(', ', attribute='name') }}{% if book.authors and book.edition %} · {% endif %}{% if book.edition %}{{ book.edition }}{% endif %}
+                            </p>
                         {% endif %}
                     {% endif %}
                 </div>
